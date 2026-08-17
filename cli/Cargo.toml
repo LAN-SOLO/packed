@@ -1,0 +1,13 @@
+[package]
+name = "packed-cli"
+version = "0.1.0"
+edition = "2021"
+description = "packed CLI — drives packed-core for scripting and tests"
+license = "MIT"
+
+[[bin]]
+name = "packed"
+path = "src/main.rs"
+
+[dependencies]
+packed-core = { path = "../core" }
