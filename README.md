@@ -14,7 +14,13 @@ Produktseite: https://lan-solo.com/de/tools/packed/ · Plan: `PACKED_PLAN.md`
 
 **Phase 0 — Core & CLI (in Arbeit).** Der Rust-Core (`core/`) erkennt Formate,
 listet, entpackt und erstellt Archive; eine CLI (`cli/`) treibt ihn für Skripte
-und Tests. Die Desktop-App (Tauri) folgt in Phase 2.
+und Tests. Das Tauri-App-Grundgerüst (`src-tauri/` + `src/`) steht inklusive
+**In-App-Updater** (gleiches Muster wie keypile): signierte Updates von GitHub
+Releases, stiller Check beim Start, „Nach Updates suchen"-Button — und vor
+jeder Installation zeigt die App das Changelog, installiert wird erst nach
+Bestätigung. Releases entstehen per Git-Tag `v*` (`.github/workflows/build.yml`
+baut, signiert, generiert das Changelog aus den Commits und published
+`latest.json`). Signatur-Key: `~/.tauri/packed-updater.key`.
 
 ### Bereits umgesetzt (Phase 0)
 
