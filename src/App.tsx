@@ -3,6 +3,7 @@ import { getVersion } from '@tauri-apps/api/app';
 import { api, UpdateInfo } from './api';
 import { t } from './i18n';
 import UpdateModal from './components/UpdateModal';
+import Help from './components/Help';
 
 export default function App() {
   const [version, setVersion] = useState('');
@@ -77,6 +78,7 @@ export default function App() {
         <UpdateModal info={update} onToast={toast} onClose={() => setShowUpdateModal(false)} />
       )}
 
+      <Help />
       {toastMsg && <div className={`toast${toastMsg.err ? ' error' : ''}`}>{toastMsg.msg}</div>}
     </div>
   );
