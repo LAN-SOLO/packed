@@ -60,40 +60,81 @@ pub fn create(
     level: Level,
     password: Option<&str>,
 ) -> Result<()> {
+    create_with_progress(dest, format, inputs, level, password, &mut |_, _| {})
+}
+
+/// Like [`create`], but reports progress after every packed file:
+/// `progress(cumulative_source_bytes, entry_name)`.
+pub fn create_with_progress(
+    dest: &Path,
+    format: Format,
+    inputs: &[Input],
+    level: Level,
+    password: Option<&str>,
+    progress: &mut dyn FnMut(u64, &str),
+) -> Result<()> {
     if !format.is_writable() {
         return Err(CoreError::WriteUnsupported(format.label()));
     }
     match format {
-        Format::Zip => create_zip(dest, inputs, level, password),
-        Format::Tar => create_tar(dest, inputs, |w| Ok(Box::new(w))),
-        Format::TarGz => create_tar(dest, inputs, |w| {
-            Ok(Box::new(flate2::write::GzEncoder::new(
-                w,
-                flate2::Compression::new(level.deflate()),
-            )))
-        }),
-        Format::TarBz2 => create_tar(dest, inputs, |w| {
-            Ok(Box::new(bzip2::write::BzEncoder::new(
-                w,
-                bzip2::Compression::new(level.bzip2()),
-            )))
-        }),
-        Format::TarXz => create_tar(dest, inputs, |w| {
-            Ok(Box::new(xz2::write::XzEncoder::new(w, level.xz())))
-        }),
-        Format::TarZst => create_tar(dest, inputs, |w| {
-            let enc = zstd::stream::write::Encoder::new(w, level.zstd())?.auto_finish();
-            Ok(Box::new(enc))
-        }),
+        Format::Zip => create_zip(dest, inputs, level, password, progress),
+        Format::Tar => create_tar(dest, inputs, |w| Ok(Box::new(w)), progress),
+        Format::TarGz => create_tar(
+            dest,
+            inputs,
+            |w| {
+                Ok(Box::new(flate2::write::GzEncoder::new(
+                    w,
+                    flate2::Compression::new(level.deflate()),
+                )))
+            },
+            progress,
+        ),
+        Format::TarBz2 => create_tar(
+            dest,
+            inputs,
+            |w| {
+                Ok(Box::new(bzip2::write::BzEncoder::new(
+                    w,
+                    bzip2::Compression::new(level.bzip2()),
+                )))
+            },
+            progress,
+        ),
+        Format::TarXz => create_tar(
+            dest,
+            inputs,
+            |w| Ok(Box::new(xz2::write::XzEncoder::new(w, level.xz()))),
+            progress,
+        ),
+        Format::TarZst => create_tar(
+            dest,
+            inputs,
+            |w| {
+                let enc = zstd::stream::write::Encoder::new(w, level.zstd())?.auto_finish();
+                Ok(Box::new(enc))
+            },
+            progress,
+        ),
         // single-stream: exactly one input, compressed as a raw blob
         f @ (Format::Gzip | Format::Bzip2 | Format::Xz | Format::Zstd) => {
-            create_single_stream(dest, inputs, level, f)
+            create_single_stream(dest, inputs, level, f, progress)
         }
         other => Err(CoreError::WriteUnsupported(other.label())),
     }
 }
 
-fn create_zip(dest: &Path, inputs: &[Input], level: Level, password: Option<&str>) -> Result<()> {
+fn source_size(input: &Input) -> u64 {
+    std::fs::metadata(&input.source).map(|m| m.len()).unwrap_or(0)
+}
+
+fn create_zip(
+    dest: &Path,
+    inputs: &[Input],
+    level: Level,
+    password: Option<&str>,
+    progress: &mut dyn FnMut(u64, &str),
+) -> Result<()> {
     use zip::write::SimpleFileOptions;
     let file = std::fs::File::create(dest)?;
     let mut zip = zip::ZipWriter::new(file);
@@ -104,31 +145,48 @@ fn create_zip(dest: &Path, inputs: &[Input], level: Level, password: Option<&str
     if let Some(pw) = password {
         opts = opts.with_aes_encryption(zip::AesMode::Aes256, pw);
     }
+    let mut done = 0u64;
     for input in inputs {
         zip.start_file(&input.name, opts)?;
         let mut src = std::fs::File::open(&input.source)?;
         io::copy(&mut src, &mut zip)?;
+        done += source_size(input);
+        progress(done, &input.name);
     }
     zip.finish()?;
     Ok(())
 }
 
-fn create_tar<'a, F>(dest: &Path, inputs: &[Input], wrap: F) -> Result<()>
+fn create_tar<'a, F>(
+    dest: &Path,
+    inputs: &[Input],
+    wrap: F,
+    progress: &mut dyn FnMut(u64, &str),
+) -> Result<()>
 where
     F: FnOnce(std::fs::File) -> Result<Box<dyn Write + 'a>>,
 {
     let file = std::fs::File::create(dest)?;
     let writer = wrap(file)?;
     let mut builder = tar::Builder::new(writer);
+    let mut done = 0u64;
     for input in inputs {
         builder.append_path_with_name(&input.source, &input.name)?;
+        done += source_size(input);
+        progress(done, &input.name);
     }
     // finish() flushes tar; the wrapped encoder finalizes on drop (auto_finish)
     builder.into_inner()?.flush()?;
     Ok(())
 }
 
-fn create_single_stream(dest: &Path, inputs: &[Input], level: Level, format: Format) -> Result<()> {
+fn create_single_stream(
+    dest: &Path,
+    inputs: &[Input],
+    level: Level,
+    format: Format,
+    progress: &mut dyn FnMut(u64, &str),
+) -> Result<()> {
     if inputs.len() != 1 {
         return Err(CoreError::Other(format!(
             "{} holds a single file; pack a .tar.{} for multiple files",
@@ -153,6 +211,7 @@ fn create_single_stream(dest: &Path, inputs: &[Input], level: Level, format: For
     let mut src = std::fs::File::open(&inputs[0].source)?;
     io::copy(&mut src, &mut writer)?;
     writer.flush()?;
+    progress(source_size(&inputs[0]), &inputs[0].name);
     Ok(())
 }
 

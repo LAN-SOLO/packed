@@ -1,9 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
+import { listen } from '@tauri-apps/api/event';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open, save } from '@tauri-apps/plugin-dialog';
-import { api, CreateFormat, Level, Listing, UpdateInfo } from './api';
+import {
+  api,
+  CreateFormat,
+  CreateResult,
+  Level,
+  Listing,
+  PathStat,
+  ProgressEvent,
+  UpdateInfo,
+} from './api';
 import { t } from './i18n';
 import UpdateModal from './components/UpdateModal';
 import Help from './components/Help';
@@ -48,6 +58,12 @@ function baseName(path: string): string {
   return path.split('/').pop() ?? path;
 }
 
+/** Ersparnis in Prozent (positiv = kleiner geworden). */
+function savingsPct(original: number, packed: number): number {
+  if (original <= 0) return 0;
+  return Math.round((1 - packed / original) * 100);
+}
+
 export default function App() {
   const [version, setVersion] = useState('');
   const [view, setView] = useState<View>({ kind: 'home' });
@@ -62,12 +78,19 @@ export default function App() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [lastOutput, setLastOutput] = useState<string | null>(null);
+  const [extractResult, setExtractResult] = useState<number | null>(null);
 
   // create state
   const [sources, setSources] = useState<string[]>([]);
   const [format, setFormat] = useState<CreateFormat>('zip');
   const [level, setLevel] = useState<Level>('balanced');
   const [createPw, setCreatePw] = useState('');
+  const [createResult, setCreateResult] = useState<CreateResult | null>(null);
+  const [stats, setStats] = useState<Record<string, PathStat>>({});
+
+  // progress (Packen/Entpacken)
+  const [progress, setProgress] = useState<ProgressEvent | null>(null);
+  const extractTotalRef = useRef(0);
 
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -121,6 +144,37 @@ export default function App() {
       .catch(() => {});
   }, []);
 
+  // Fortschritts-Events der Engine
+  useEffect(() => {
+    const un = listen<ProgressEvent>('pack-progress', ({ payload }) => {
+      setProgress(payload);
+    });
+    return () => {
+      un.then((f) => f());
+    };
+  }, []);
+
+  // Größen der Packliste nachladen
+  useEffect(() => {
+    if (sources.length === 0) {
+      setStats({});
+      return;
+    }
+    api
+      .statPaths(sources)
+      .then((list) => {
+        const map: Record<string, PathStat> = {};
+        for (const s of list) map[s.path] = s;
+        setStats(map);
+      })
+      .catch(() => {});
+  }, [sources]);
+
+  // Ergebnis-Zeile zurücksetzen, wenn sich die Auswahl ändert
+  useEffect(() => {
+    setCreateResult(null);
+  }, [sources, format, level]);
+
   // Drag & Drop: Archive öffnen bzw. Dateien zur Packliste hinzufügen
   useEffect(() => {
     const un = getCurrentWebview().onDragDropEvent((event) => {
@@ -156,15 +210,19 @@ export default function App() {
     if (view.kind !== 'listing') return;
     const dest = await open({ directory: true, title: t.chooseDestTitle });
     if (typeof dest !== 'string') return;
+    extractTotalRef.current = view.listing.entries.filter((e) => !e.isDir).length;
     setBusy(true);
+    setExtractResult(null);
     try {
       const n = await api.extractArchive(view.path, dest, password || undefined);
       setLastOutput(dest);
+      setExtractResult(n);
       toast(t.extracted(n));
     } catch (err) {
       toast(`${t.extractError}: ${String(err)}`, true);
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -184,8 +242,9 @@ export default function App() {
     });
     if (typeof dest !== 'string') return;
     setBusy(true);
+    setCreateResult(null);
     try {
-      const n = await api.createArchive(
+      const res = await api.createArchive(
         dest,
         format,
         sources,
@@ -193,11 +252,18 @@ export default function App() {
         format === 'zip' ? createPw || undefined : undefined
       );
       setLastOutput(dest);
-      toast(t.created(n));
+      setCreateResult(res);
+      const pct = savingsPct(res.originalBytes, res.packedBytes);
+      toast(
+        `${t.created(res.files)} · ${fmtBytes(res.originalBytes)} → ${fmtBytes(res.packedBytes)}${
+          pct > 0 ? ` · ${t.saves(pct)}` : ''
+        }`
+      );
     } catch (err) {
       toast(`${t.createError}: ${String(err)}`, true);
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -285,8 +351,15 @@ export default function App() {
             </span>
             <span className="badge">{view.listing.format}</span>
             {view.listing.encrypted && <span className="badge warn">{t.encryptedBadge}</span>}
+            {savingsPct(view.listing.totalSize, view.listing.archiveSize) > 0 && (
+              <span className="badge ok">
+                −{savingsPct(view.listing.totalSize, view.listing.archiveSize)} %
+              </span>
+            )}
             <span className="meta">
-              {t.entries(view.listing.entries.length)} · {fmtBytes(view.listing.totalSize)}
+              {t.entries(view.listing.entries.length)} · {t.contentLabel}{' '}
+              {fmtBytes(view.listing.totalSize)} · {t.archiveLabel}{' '}
+              {fmtBytes(view.listing.archiveSize)}
             </span>
           </div>
           <div className="entry-table">
@@ -310,22 +383,49 @@ export default function App() {
             </div>
           </div>
           <div className="workbottom">
-            {view.listing.encrypted && (
-              <input
-                type="password"
-                className="pwfield"
-                placeholder={t.passwordPlaceholder}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+            {busy && progress?.phase === 'extract' ? (
+              <div className="progresswrap">
+                <div className="progressbar">
+                  <div
+                    className="fill"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        extractTotalRef.current > 0
+                          ? (progress.done / extractTotalRef.current) * 100
+                          : 50
+                      )}%`,
+                    }}
+                  />
+                </div>
+                <span className="progresslabel">
+                  {t.progressExtract} · {progress.done}/{extractTotalRef.current} ·{' '}
+                  {baseName(progress.name)}
+                </span>
+              </div>
+            ) : (
+              <>
+                {view.listing.encrypted && (
+                  <input
+                    type="password"
+                    className="pwfield"
+                    placeholder={t.passwordPlaceholder}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                )}
+                {extractResult !== null && (
+                  <span className="result-line">✓ {t.resultExtract(extractResult)}</span>
+                )}
+                <span className="spacer" />
+                {lastOutput && (
+                  <button onClick={() => api.revealPath(lastOutput)}>{t.revealBtn}</button>
+                )}
+                <button className="primary" onClick={extractAll} disabled={busy}>
+                  {busy ? t.extracting : t.extractAll}
+                </button>
+              </>
             )}
-            <span className="spacer" />
-            {lastOutput && (
-              <button onClick={() => api.revealPath(lastOutput)}>{t.revealBtn}</button>
-            )}
-            <button className="primary" onClick={extractAll} disabled={busy}>
-              {busy ? t.extracting : t.extractAll}
-            </button>
           </div>
         </main>
       )}
@@ -335,21 +435,29 @@ export default function App() {
           <div className="worktop">
             <button onClick={() => setView({ kind: 'home' })}>← {t.back}</button>
             <span className="fname">{t.createTitle}</span>
-            <span className="meta">{t.items(sources.length)}</span>
+            <span className="meta">
+              {t.items(sources.length)}
+              {sources.length > 0 &&
+                ` · ${fmtBytes(sources.reduce((sum, p) => sum + (stats[p]?.size ?? 0), 0))}`}
+            </span>
             <span className="spacer" />
             <button onClick={() => addFiles(false)}>{t.addFiles}</button>
             <button onClick={() => addFiles(true)}>{t.addFolder}</button>
           </div>
           <div className="entry-table">
             <div className="entry-scroll">
-              {sources.length === 0 && <div className="empty-note">{t.createEmpty}</div>}
+              {sources.length === 0 && <div className="dropzone">{t.createEmpty}</div>}
               {sources.map((p) => (
                 <div key={p} className="entry-row">
                   <span className="c-name" title={p}>
+                    {stats[p]?.isDir ? '📁 ' : ''}
                     {baseName(p)}
                   </span>
                   <span className="c-path" title={p}>
                     {p}
+                  </span>
+                  <span className="c-size">
+                    {stats[p] ? fmtBytes(stats[p].size) : '…'}
                   </span>
                   <button
                     className="ghost small"
@@ -362,6 +470,27 @@ export default function App() {
               ))}
             </div>
           </div>
+          {busy && progress?.phase === 'create' ? (
+            <div className="workbottom">
+              <div className="progresswrap">
+                <div className="progressbar">
+                  <div
+                    className="fill"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        progress.total > 0 ? (progress.done / progress.total) * 100 : 50
+                      )}%`,
+                    }}
+                  />
+                </div>
+                <span className="progresslabel">
+                  {t.progressCreate} · {fmtBytes(progress.done)}/{fmtBytes(progress.total)} ·{' '}
+                  {baseName(progress.name)}
+                </span>
+              </div>
+            </div>
+          ) : (
           <div className="workbottom create-opts">
             <label>
               <span className="fieldlabel">{t.formatLabel}</span>
@@ -409,6 +538,25 @@ export default function App() {
               {busy ? t.creating : t.createBtn}
             </button>
           </div>
+          )}
+          {createResult && !busy && (
+            <div className="result-line">
+              ✓ {t.resultCreate(
+                createResult.files,
+                fmtBytes(createResult.originalBytes),
+                fmtBytes(createResult.packedBytes)
+              )}{' '}
+              {savingsPct(createResult.originalBytes, createResult.packedBytes) > 0 ? (
+                <strong>
+                  · {t.saves(savingsPct(createResult.originalBytes, createResult.packedBytes))}
+                </strong>
+              ) : (
+                <span>
+                  · {t.grows(-savingsPct(createResult.originalBytes, createResult.packedBytes))}
+                </span>
+              )}
+            </div>
+          )}
           {singleStreamBlocked && <div className="hint-line">{t.singleStreamHint}</div>}
         </main>
       )}

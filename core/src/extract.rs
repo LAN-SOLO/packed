@@ -31,21 +31,43 @@ pub fn safe_join(dest: &Path, entry: &str) -> Result<PathBuf> {
 /// Extract every entry of `path` into `dest`. `password` is used for encrypted
 /// ZIP entries; pass None for unencrypted archives.
 pub fn extract_all(path: &Path, dest: &Path, password: Option<&str>) -> Result<usize> {
+    extract_all_with_progress(path, dest, password, &mut |_, _| {})
+}
+
+/// Like [`extract_all`], but reports progress after every extracted file:
+/// `progress(files_done, entry_name)`.
+pub fn extract_all_with_progress(
+    path: &Path,
+    dest: &Path,
+    password: Option<&str>,
+    progress: &mut dyn FnMut(usize, &str),
+) -> Result<usize> {
     std::fs::create_dir_all(dest)?;
     match detect(path)? {
-        Format::Zip => extract_zip(path, dest, password),
-        Format::Tar => extract_tar(std::fs::File::open(path)?, dest),
-        Format::TarGz => extract_tar(flate2::read::GzDecoder::new(std::fs::File::open(path)?), dest),
-        Format::TarBz2 => {
-            extract_tar(bzip2::read::BzDecoder::new(std::fs::File::open(path)?), dest)
-        }
-        Format::TarXz => extract_tar(xz2::read::XzDecoder::new(std::fs::File::open(path)?), dest),
+        Format::Zip => extract_zip(path, dest, password, progress),
+        Format::Tar => extract_tar(std::fs::File::open(path)?, dest, progress),
+        Format::TarGz => extract_tar(
+            flate2::read::GzDecoder::new(std::fs::File::open(path)?),
+            dest,
+            progress,
+        ),
+        Format::TarBz2 => extract_tar(
+            bzip2::read::BzDecoder::new(std::fs::File::open(path)?),
+            dest,
+            progress,
+        ),
+        Format::TarXz => extract_tar(
+            xz2::read::XzDecoder::new(std::fs::File::open(path)?),
+            dest,
+            progress,
+        ),
         Format::TarZst => extract_tar(
             zstd::stream::read::Decoder::new(std::fs::File::open(path)?)?,
             dest,
+            progress,
         ),
         f @ (Format::Gzip | Format::Bzip2 | Format::Xz | Format::Zstd) => {
-            extract_single_stream(path, dest, f)
+            extract_single_stream(path, dest, f, progress)
         }
         other => Err(CoreError::Other(format!(
             "extracting {} arrives in phase 1",
@@ -54,7 +76,12 @@ pub fn extract_all(path: &Path, dest: &Path, password: Option<&str>) -> Result<u
     }
 }
 
-fn extract_zip(path: &Path, dest: &Path, password: Option<&str>) -> Result<usize> {
+fn extract_zip(
+    path: &Path,
+    dest: &Path,
+    password: Option<&str>,
+    progress: &mut dyn FnMut(usize, &str),
+) -> Result<usize> {
     let file = std::fs::File::open(path)?;
     let mut zip = zip::ZipArchive::new(file)?;
     let mut count = 0;
@@ -82,11 +109,16 @@ fn extract_zip(path: &Path, dest: &Path, password: Option<&str>) -> Result<usize
         let mut writer = std::fs::File::create(&out)?;
         io::copy(&mut entry, &mut writer)?;
         count += 1;
+        progress(count, &name);
     }
     Ok(count)
 }
 
-fn extract_tar<R: Read>(reader: R, dest: &Path) -> Result<usize> {
+fn extract_tar<R: Read>(
+    reader: R,
+    dest: &Path,
+    progress: &mut dyn FnMut(usize, &str),
+) -> Result<usize> {
     let mut archive = tar::Archive::new(reader);
     let mut count = 0;
     for entry in archive.entries()? {
@@ -102,11 +134,17 @@ fn extract_tar<R: Read>(reader: R, dest: &Path) -> Result<usize> {
         }
         entry.unpack(&out)?;
         count += 1;
+        progress(count, &name);
     }
     Ok(count)
 }
 
-fn extract_single_stream(path: &Path, dest: &Path, format: Format) -> Result<usize> {
+fn extract_single_stream(
+    path: &Path,
+    dest: &Path,
+    format: Format,
+    progress: &mut dyn FnMut(usize, &str),
+) -> Result<usize> {
     let base = path
         .file_name()
         .and_then(|n| n.to_str())
@@ -123,6 +161,7 @@ fn extract_single_stream(path: &Path, dest: &Path, format: Format) -> Result<usi
     };
     let mut writer = std::fs::File::create(&out)?;
     io::copy(&mut reader, &mut writer)?;
+    progress(1, &base);
     Ok(1)
 }
 

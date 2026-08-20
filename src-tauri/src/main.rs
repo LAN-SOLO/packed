@@ -2,11 +2,49 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use packed_core::compress::Level;
-use packed_core::create::{collect, create};
-use packed_core::extract::extract_all;
+use packed_core::create::{collect, create_with_progress};
+use packed_core::extract::extract_all_with_progress;
 use packed_core::Format;
 use serde::Serialize;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use tauri::Emitter;
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProgressEvent {
+    pub phase: &'static str,
+    pub done: u64,
+    pub total: u64,
+    pub name: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateResultDto {
+    pub files: usize,
+    pub original_bytes: u64,
+    pub packed_bytes: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StatDto {
+    pub path: String,
+    pub size: u64,
+    pub is_dir: bool,
+}
+
+fn dir_size(path: &Path) -> u64 {
+    let Ok(meta) = std::fs::metadata(path) else { return 0 };
+    if meta.is_file() {
+        return meta.len();
+    }
+    let Ok(entries) = std::fs::read_dir(path) else { return 0 };
+    entries
+        .flatten()
+        .map(|e| dir_size(&e.path()))
+        .sum()
+}
 
 #[derive(Serialize)]
 pub struct UpdateInfoDto {
@@ -33,6 +71,8 @@ pub struct ListingDto {
     pub encrypted: bool,
     pub entries: Vec<EntryDto>,
     pub total_size: u64,
+    /// Size of the archive file itself on disk.
+    pub archive_size: u64,
 }
 
 fn format_from_str(s: &str) -> Result<Format, String> {
@@ -55,13 +95,16 @@ fn format_from_str(s: &str) -> Result<Format, String> {
 #[tauri::command]
 async fn inspect_archive(path: String) -> Result<ListingDto, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let listing = packed_core::list::list(&PathBuf::from(&path)).map_err(|e| e.to_string())?;
+        let pb = PathBuf::from(&path);
+        let listing = packed_core::list::list(&pb).map_err(|e| e.to_string())?;
         let total_size = listing.entries.iter().map(|e| e.size).sum();
+        let archive_size = std::fs::metadata(&pb).map(|m| m.len()).unwrap_or(0);
         Ok(ListingDto {
             format: listing.format.label().to_string(),
             format_writable: listing.format.is_writable(),
             encrypted: listing.encrypted,
             total_size,
+            archive_size,
             entries: listing
                 .entries
                 .into_iter()
@@ -80,17 +123,30 @@ async fn inspect_archive(path: String) -> Result<ListingDto, String> {
 }
 
 /// Extract the whole archive into `dest`; returns the number of files written.
+/// Emits `pack-progress` events (done = files so far; total supplied by the UI).
 #[tauri::command]
 async fn extract_archive(
+    app: tauri::AppHandle,
     path: String,
     dest: String,
     password: Option<String>,
 ) -> Result<usize, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        extract_all(
+        extract_all_with_progress(
             &PathBuf::from(&path),
             &PathBuf::from(&dest),
             password.as_deref().filter(|p| !p.is_empty()),
+            &mut |done, name| {
+                let _ = app.emit(
+                    "pack-progress",
+                    ProgressEvent {
+                        phase: "extract",
+                        done: done as u64,
+                        total: 0,
+                        name: name.to_string(),
+                    },
+                );
+            },
         )
         .map_err(|e| e.to_string())
     })
@@ -98,15 +154,17 @@ async fn extract_archive(
     .map_err(|e| e.to_string())?
 }
 
-/// Create an archive at `dest` from `sources`; returns the number of files packed.
+/// Create an archive at `dest` from `sources`. Emits byte-accurate
+/// `pack-progress` events and returns files + original/packed sizes.
 #[tauri::command]
 async fn create_archive(
+    app: tauri::AppHandle,
     dest: String,
     format: String,
     sources: Vec<String>,
     level: Level,
     password: Option<String>,
-) -> Result<usize, String> {
+) -> Result<CreateResultDto, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let fmt = format_from_str(&format)?;
         let paths: Vec<PathBuf> = sources.iter().map(PathBuf::from).collect();
@@ -114,15 +172,57 @@ async fn create_archive(
         if inputs.is_empty() {
             return Err("keine Dateien ausgewählt".to_string());
         }
-        create(
-            &PathBuf::from(&dest),
+        let total: u64 = inputs
+            .iter()
+            .map(|i| std::fs::metadata(&i.source).map(|m| m.len()).unwrap_or(0))
+            .sum();
+        let dest_path = PathBuf::from(&dest);
+        create_with_progress(
+            &dest_path,
             fmt,
             &inputs,
             level,
             password.as_deref().filter(|p| !p.is_empty()),
+            &mut |done, name| {
+                let _ = app.emit(
+                    "pack-progress",
+                    ProgressEvent {
+                        phase: "create",
+                        done,
+                        total,
+                        name: name.to_string(),
+                    },
+                );
+            },
         )
         .map_err(|e| e.to_string())?;
-        Ok(inputs.len())
+        let packed = std::fs::metadata(&dest_path).map(|m| m.len()).unwrap_or(0);
+        Ok(CreateResultDto {
+            files: inputs.len(),
+            original_bytes: total,
+            packed_bytes: packed,
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Sizes for the pack list (directories are summed recursively).
+#[tauri::command]
+async fn stat_paths(paths: Vec<String>) -> Result<Vec<StatDto>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        Ok(paths
+            .into_iter()
+            .map(|p| {
+                let pb = PathBuf::from(&p);
+                let is_dir = pb.is_dir();
+                StatDto {
+                    size: dir_size(&pb),
+                    is_dir,
+                    path: p,
+                }
+            })
+            .collect())
     })
     .await
     .map_err(|e| e.to_string())?
@@ -179,6 +279,7 @@ fn main() {
             inspect_archive,
             extract_archive,
             create_archive,
+            stat_paths,
             reveal_path,
             check_update,
             install_update

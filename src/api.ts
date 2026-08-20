@@ -21,6 +21,26 @@ export interface Listing {
   encrypted: boolean;
   entries: ArchiveEntry[];
   totalSize: number;
+  archiveSize: number;
+}
+
+export interface CreateResult {
+  files: number;
+  originalBytes: number;
+  packedBytes: number;
+}
+
+export interface PathStat {
+  path: string;
+  size: number;
+  isDir: boolean;
+}
+
+export interface ProgressEvent {
+  phase: 'create' | 'extract';
+  done: number;
+  total: number;
+  name: string;
 }
 
 export type CreateFormat =
@@ -48,13 +68,14 @@ export const api = {
     level: Level,
     password?: string
   ) =>
-    invoke<number>('create_archive', {
+    invoke<CreateResult>('create_archive', {
       dest,
       format,
       sources,
       level,
       password: password ?? null,
     }),
+  statPaths: (paths: string[]) => invoke<PathStat[]>('stat_paths', { paths }),
   revealPath: (path: string) => invoke<void>('reveal_path', { path }),
   checkUpdate: () => invoke<UpdateInfo | null>('check_update'),
   installUpdate: () => invoke<void>('install_update'),
