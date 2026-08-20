@@ -600,3 +600,26 @@ input:focus, select:focus { border-color: var(--accent-deep); }
   cursor: pointer;
 }
 .hlp-action:hover { background: rgba(2, 132, 199, 0.25); }
+
+/* selektives Entpacken */
+.c-check {
+  width: 26px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 14px;
+  color: var(--faint);
+  cursor: pointer;
+  user-select: none;
+}
+.entry-row.sel .c-check { color: var(--accent); }
+.entry-row.sel-row { cursor: pointer; }
+.entry-row.sel { background: rgba(2, 132, 199, 0.10); }
+.entry-row.sel:hover { background: rgba(2, 132, 199, 0.16); }
+.entry-row.head .c-check:hover { color: var(--accent); }
+.hint-faint {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--faint);
+  flex-shrink: 0;
+  margin-top: -6px;
+}

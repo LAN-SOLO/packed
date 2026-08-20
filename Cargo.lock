@@ -2582,7 +2582,7 @@ dependencies = [
 
 [[package]]
 name = "packed-app"
-version = "0.2.2"
+version = "0.3.0"
 dependencies = [
  "packed-core",
  "serde",

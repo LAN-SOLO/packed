@@ -61,6 +61,13 @@ export const api = {
   inspectArchive: (path: string) => invoke<Listing>('inspect_archive', { path }),
   extractArchive: (path: string, dest: string, password?: string) =>
     invoke<number>('extract_archive', { path, dest, password: password ?? null }),
+  extractEntries: (path: string, dest: string, names: string[], password?: string) =>
+    invoke<number>('extract_entries', {
+      path,
+      dest,
+      names,
+      password: password ?? null,
+    }),
   createArchive: (
     dest: string,
     format: CreateFormat,

@@ -3,7 +3,7 @@
 
 use packed_core::compress::Level;
 use packed_core::create::{collect, create_with_progress};
-use packed_core::extract::extract_all_with_progress;
+use packed_core::extract::{extract_all_with_progress, extract_entries_with_progress};
 use packed_core::Format;
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -154,6 +154,39 @@ async fn extract_archive(
     .map_err(|e| e.to_string())?
 }
 
+/// Extract only the selected entries (names; `dir/` selects the subtree).
+#[tauri::command]
+async fn extract_entries(
+    app: tauri::AppHandle,
+    path: String,
+    dest: String,
+    password: Option<String>,
+    names: Vec<String>,
+) -> Result<usize, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        extract_entries_with_progress(
+            &PathBuf::from(&path),
+            &PathBuf::from(&dest),
+            password.as_deref().filter(|p| !p.is_empty()),
+            &names,
+            &mut |done, name| {
+                let _ = app.emit(
+                    "pack-progress",
+                    ProgressEvent {
+                        phase: "extract",
+                        done: done as u64,
+                        total: 0,
+                        name: name.to_string(),
+                    },
+                );
+            },
+        )
+        .map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// Create an archive at `dest` from `sources`. Emits byte-accurate
 /// `pack-progress` events and returns files + original/packed sizes.
 #[tauri::command]
@@ -278,6 +311,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             inspect_archive,
             extract_archive,
+            extract_entries,
             create_archive,
             stat_paths,
             reveal_path,

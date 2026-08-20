@@ -42,32 +42,67 @@ pub fn extract_all_with_progress(
     password: Option<&str>,
     progress: &mut dyn FnMut(usize, &str),
 ) -> Result<usize> {
+    extract_filtered(path, dest, password, None, progress)
+}
+
+/// Extract only the entries in `names`. A name ending in `/` selects the whole
+/// subtree beneath it. Returns the number of files written.
+pub fn extract_entries_with_progress(
+    path: &Path,
+    dest: &Path,
+    password: Option<&str>,
+    names: &[String],
+    progress: &mut dyn FnMut(usize, &str),
+) -> Result<usize> {
+    let filter = |entry: &str| {
+        names
+            .iter()
+            .any(|s| s == entry || (s.ends_with('/') && entry.starts_with(s.as_str())))
+    };
+    extract_filtered(path, dest, password, Some(&filter), progress)
+}
+
+fn extract_filtered(
+    path: &Path,
+    dest: &Path,
+    password: Option<&str>,
+    filter: Option<&dyn Fn(&str) -> bool>,
+    progress: &mut dyn FnMut(usize, &str),
+) -> Result<usize> {
     std::fs::create_dir_all(dest)?;
     match detect(path)? {
-        Format::Zip => extract_zip(path, dest, password, progress),
-        Format::Tar => extract_tar(std::fs::File::open(path)?, dest, progress),
+        Format::Zip => extract_zip(path, dest, password, filter, progress),
+        Format::Tar => extract_tar(std::fs::File::open(path)?, dest, filter, progress),
         Format::TarGz => extract_tar(
             flate2::read::GzDecoder::new(std::fs::File::open(path)?),
             dest,
+            filter,
             progress,
         ),
         Format::TarBz2 => extract_tar(
             bzip2::read::BzDecoder::new(std::fs::File::open(path)?),
             dest,
+            filter,
             progress,
         ),
         Format::TarXz => extract_tar(
             xz2::read::XzDecoder::new(std::fs::File::open(path)?),
             dest,
+            filter,
             progress,
         ),
         Format::TarZst => extract_tar(
             zstd::stream::read::Decoder::new(std::fs::File::open(path)?)?,
             dest,
+            filter,
             progress,
         ),
         f @ (Format::Gzip | Format::Bzip2 | Format::Xz | Format::Zstd) => {
-            extract_single_stream(path, dest, f, progress)
+            // one logical entry: a filter either matches it or selects nothing
+            match filter {
+                Some(f_) if !f_(&single_stream_name(path)) => Ok(0),
+                _ => extract_single_stream(path, dest, f, progress),
+            }
         }
         other => Err(CoreError::Other(format!(
             "extracting {} arrives in phase 1",
@@ -76,10 +111,18 @@ pub fn extract_all_with_progress(
     }
 }
 
+fn single_stream_name(path: &Path) -> String {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .map(|n| n.rsplit_once('.').map(|(b, _)| b.to_string()).unwrap_or_else(|| n.to_string()))
+        .unwrap_or_else(|| "data".to_string())
+}
+
 fn extract_zip(
     path: &Path,
     dest: &Path,
     password: Option<&str>,
+    filter: Option<&dyn Fn(&str) -> bool>,
     progress: &mut dyn FnMut(usize, &str),
 ) -> Result<usize> {
     let file = std::fs::File::open(path)?;
@@ -91,6 +134,11 @@ fn extract_zip(
             let raw = zip.by_index_raw(i)?;
             (raw.name().to_string(), raw.is_dir(), raw.encrypted())
         };
+        if let Some(f) = filter {
+            if !f(&name) {
+                continue;
+            }
+        }
         let out = safe_join(dest, &name)?;
         if is_dir {
             std::fs::create_dir_all(&out)?;
@@ -117,6 +165,7 @@ fn extract_zip(
 fn extract_tar<R: Read>(
     reader: R,
     dest: &Path,
+    filter: Option<&dyn Fn(&str) -> bool>,
     progress: &mut dyn FnMut(usize, &str),
 ) -> Result<usize> {
     let mut archive = tar::Archive::new(reader);
@@ -124,6 +173,11 @@ fn extract_tar<R: Read>(
     for entry in archive.entries()? {
         let mut entry = entry?;
         let name = entry.path()?.to_string_lossy().to_string();
+        if let Some(f) = filter {
+            if !f(&name) {
+                continue;
+            }
+        }
         let out = safe_join(dest, &name)?;
         if entry.header().entry_type().is_dir() {
             std::fs::create_dir_all(&out)?;
@@ -145,11 +199,7 @@ fn extract_single_stream(
     format: Format,
     progress: &mut dyn FnMut(usize, &str),
 ) -> Result<usize> {
-    let base = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .map(|n| n.rsplit_once('.').map(|(b, _)| b.to_string()).unwrap_or_else(|| n.to_string()))
-        .unwrap_or_else(|| "data".to_string());
+    let base = single_stream_name(path);
     let out = safe_join(dest, &base)?;
     let input = std::fs::File::open(path)?;
     let mut reader: Box<dyn Read> = match format {

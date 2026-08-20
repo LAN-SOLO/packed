@@ -1,6 +1,6 @@
 [package]
 name = "packed-app"
-version = "0.2.2"
+version = "0.3.0"
 description = "packed — Archive öffnen, erstellen, extrem komprimieren"
 edition = "2021"
 license = "MIT"

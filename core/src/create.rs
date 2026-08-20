@@ -221,6 +221,43 @@ mod tests {
     use crate::extract::extract_all;
     use crate::list::list;
 
+
+    #[test]
+    fn selective_extract_zip() {
+        use crate::extract::extract_entries_with_progress;
+        let tmp = tempfile::tempdir().unwrap();
+        let a = write_file(tmp.path(), "a.txt", b"aaa");
+        let b = write_file(tmp.path(), "sub/b.txt", b"bbb");
+        let c = write_file(tmp.path(), "sub/c.txt", b"ccc");
+        let dest_zip = tmp.path().join("sel.zip");
+        let inputs = vec![
+            Input::new(&a, "a.txt"),
+            Input::new(&b, "sub/b.txt"),
+            Input::new(&c, "sub/c.txt"),
+        ];
+        create(&dest_zip, Format::Zip, &inputs, Level::Fast, None).unwrap();
+
+        // nur der Unterordner
+        let out1 = tmp.path().join("out1");
+        let n = extract_entries_with_progress(
+            &dest_zip, &out1, None, &["sub/".to_string()], &mut |_, _| {},
+        )
+        .unwrap();
+        assert_eq!(n, 2);
+        assert!(out1.join("sub/b.txt").exists());
+        assert!(!out1.join("a.txt").exists());
+
+        // nur eine einzelne Datei
+        let out2 = tmp.path().join("out2");
+        let n = extract_entries_with_progress(
+            &dest_zip, &out2, None, &["a.txt".to_string()], &mut |_, _| {},
+        )
+        .unwrap();
+        assert_eq!(n, 1);
+        assert!(out2.join("a.txt").exists());
+        assert!(!out2.join("sub").exists());
+    }
+
     fn write_file(dir: &Path, name: &str, body: &[u8]) -> PathBuf {
         let p = dir.join(name);
         if let Some(parent) = p.parent() {

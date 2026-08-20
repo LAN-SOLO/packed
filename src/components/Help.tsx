@@ -115,6 +115,8 @@ const de: Content = {
       id: 'extract',
       title: 'Entpacken',
       body: [
+        'Klick auf eine Zeile wählt sie aus (Ordner nehmen ihren Inhalt mit), die Checkbox im Tabellenkopf wählt alles. „Auswahl entpacken …“ packt nur die markierten Dateien an einen Ort deiner Wahl aus.',
+        'Doppelklick auf eine Datei entpackt sie sofort einzeln — nur Zielordner wählen, fertig.',
         '„Alles entpacken …“ fragt nach einem Zielordner und entpackt das komplette Archiv dorthin — die Ordnerstruktur bleibt erhalten.',
         'Bei verschlüsselten ZIPs (Badge „verschlüsselt“, Schloss an den Einträgen) vorher das Passwort ins Feld unten eintragen.',
         'Nach dem Entpacken zeigt „Im Finder zeigen“ das Ergebnis direkt im Dateimanager.',
@@ -282,6 +284,8 @@ const en: Content = {
       id: 'extract',
       title: 'Extracting',
       body: [
+        'Clicking a row selects it (folders take their contents along), the checkbox in the table head selects everything. “Extract selection …” unpacks only the marked files to a place of your choice.',
+        'Double-clicking a file extracts it individually right away — just pick a destination, done.',
         '“Extract all …” asks for a destination folder and unpacks the whole archive there — folder structure preserved.',
         'For encrypted ZIPs (badge “encrypted”, lock on entries), enter the password in the field at the bottom first.',
         'After extraction, “Reveal in Finder” shows the result in the file manager.',

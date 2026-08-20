@@ -79,6 +79,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [lastOutput, setLastOutput] = useState<string | null>(null);
   const [extractResult, setExtractResult] = useState<number | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // create state
   const [sources, setSources] = useState<string[]>([]);
@@ -123,6 +124,8 @@ export default function App() {
         .then((listing) => {
           setPassword('');
           setLastOutput(null);
+          setExtractResult(null);
+          setSelected(new Set());
           setView({ kind: 'listing', path, listing });
         })
         .catch((err) => toast(`${t.openError}: ${String(err)}`, true))
@@ -233,6 +236,55 @@ export default function App() {
       filters: [{ name: 'Archive', extensions: ARCHIVE_EXTS }],
     });
     if (typeof picked === 'string') openArchive(picked);
+  };
+
+  // Auswahl: Klick auf Ordner nimmt den ganzen Teilbaum mit
+  const toggleEntry = (name: string, isDir: boolean) => {
+    if (view.kind !== 'listing') return;
+    const entries = view.listing.entries;
+    const prefix = name.endsWith('/') ? name : `${name}/`;
+    const targets = isDir
+      ? entries.filter((e) => e.name === name || e.name.startsWith(prefix)).map((e) => e.name)
+      : [name];
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const allIn = targets.every((t) => next.has(t));
+      targets.forEach((t) => (allIn ? next.delete(t) : next.add(t)));
+      return next;
+    });
+  };
+
+  const selectedFileCount =
+    view.kind === 'listing'
+      ? view.listing.entries.filter((e) => !e.isDir && selected.has(e.name)).length
+      : 0;
+
+  const extractSelection = async (names: string[], count: number) => {
+    if (view.kind !== 'listing') return;
+    const dest = await open({ directory: true, title: t.chooseDestTitle });
+    if (typeof dest !== 'string') return;
+    extractTotalRef.current = count;
+    setBusy(true);
+    setExtractResult(null);
+    try {
+      const n = await api.extractEntries(view.path, dest, names, password || undefined);
+      setLastOutput(dest);
+      setExtractResult(n);
+      toast(t.extracted(n));
+    } catch (err) {
+      toast(`${t.extractError}: ${String(err)}`, true);
+    } finally {
+      setBusy(false);
+      setProgress(null);
+    }
+  };
+
+  const extractSelected = () => {
+    if (view.kind !== 'listing') return;
+    const names = view.listing.entries
+      .filter((e) => selected.has(e.name))
+      .map((e) => (e.isDir && !e.name.endsWith('/') ? `${e.name}/` : e.name));
+    extractSelection(names, selectedFileCount);
   };
 
   const extractAll = async () => {
@@ -407,13 +459,33 @@ export default function App() {
           </div>
           <div className="entry-table">
             <div className="entry-row head">
+              <span
+                className="c-check"
+                title={t.selectAllTitle}
+                onClick={() => {
+                  const all = view.listing.entries;
+                  setSelected((prev) =>
+                    prev.size === all.length ? new Set() : new Set(all.map((e) => e.name))
+                  );
+                }}
+              >
+                {selected.size === view.listing.entries.length && selected.size > 0 ? '☑' : '☐'}
+              </span>
               <span className="c-name">{t.colName}</span>
               <span className="c-size">{t.colSize}</span>
               <span className="c-size">{t.colPacked}</span>
             </div>
             <div className="entry-scroll">
               {view.listing.entries.map((e, i) => (
-                <div key={i} className="entry-row">
+                <div
+                  key={i}
+                  className={`entry-row sel-row${selected.has(e.name) ? ' sel' : ''}`}
+                  onClick={() => toggleEntry(e.name, e.isDir)}
+                  onDoubleClick={() => {
+                    if (!e.isDir && !busy) extractSelection([e.name], 1);
+                  }}
+                >
+                  <span className="c-check">{selected.has(e.name) ? '☑' : '☐'}</span>
                   <span className="c-name" title={e.name}>
                     {e.isDir ? '📁 ' : ''}
                     {e.name}
@@ -425,6 +497,7 @@ export default function App() {
               ))}
             </div>
           </div>
+          <div className="hint-faint">{t.selectHint}</div>
           <div className="workbottom">
             {busy && progress?.phase === 'extract' ? (
               <div className="progresswrap">
@@ -464,9 +537,23 @@ export default function App() {
                 {lastOutput && (
                   <button onClick={() => api.revealPath(lastOutput)}>{t.revealBtn}</button>
                 )}
-                <button className="primary" onClick={extractAll} disabled={busy}>
-                  {busy ? t.extracting : t.extractAll}
-                </button>
+                {selectedFileCount > 0 ? (
+                  <>
+                    <button className="ghost" onClick={() => setSelected(new Set())}>
+                      {t.clearSelection}
+                    </button>
+                    <button onClick={extractAll} disabled={busy}>
+                      {t.extractAll}
+                    </button>
+                    <button className="primary" onClick={extractSelected} disabled={busy}>
+                      {t.extractSelected(selectedFileCount)}
+                    </button>
+                  </>
+                ) : (
+                  <button className="primary" onClick={extractAll} disabled={busy}>
+                    {busy ? t.extracting : t.extractAll}
+                  </button>
+                )}
               </>
             )}
           </div>
