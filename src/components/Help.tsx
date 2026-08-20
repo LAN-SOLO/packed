@@ -48,45 +48,117 @@ const de: Content = {
     {
       title: 'Willkommen bei packed.',
       body: [
-        'packed wird ein Archiv-Tool für alles: ZIP, 7z, TAR und die modernen Formate öffnen und erstellen — RAR wird gelesen.',
-        'Du hast gerade die Beta installiert. Sie ist bewusst schlank: das Grundgerüst mit signierten In-App-Updates.',
-        'Dieses Tutorial dauert eine halbe Minute. Du findest es jederzeit wieder über den ?-Knopf unten rechts.',
+        'packed öffnet, entpackt und erstellt Archive — ZIP, TAR, tar.gz, tar.zst und mehr, komplett lokal.',
+        'Die Startseite bietet zwei Wege: „Archiv öffnen“ und „Archiv erstellen“. Oder du ziehst einfach Dateien ins Fenster.',
+        'Dieses Tutorial dauert eine Minute. Du findest es jederzeit wieder über den ?-Knopf unten rechts.',
       ],
     },
     {
-      title: 'So funktioniert die Beta',
+      title: 'Archiv öffnen & entpacken',
       body: [
-        'Der Rust-Core (ZIP inkl. AES-256, TAR, gzip, bzip2, xz, zstd) steht bereits — die Archiv-Oberfläche kommt Stück für Stück per Update.',
-        'Jedes Update bringt sein Changelog mit: Du siehst vor der Installation, was sich ändert, und entscheidest selbst.',
-        'Kein Update installiert sich ungefragt.',
+        '„Archiv wählen …“ klicken oder ein Archiv ins Fenster ziehen — packed zeigt den Inhalt als Liste: Name, Größe, gepackte Größe.',
+        'Verschlüsselte ZIPs erkennst du am Schloss-Symbol und dem Badge „verschlüsselt“ — das Passwort trägst du unten ein.',
+        '„Alles entpacken …“ fragt nach dem Zielordner und packt alles dorthin aus. Danach: „Im Finder zeigen“.',
+      ],
+    },
+    {
+      title: 'Archiv erstellen',
+      body: [
+        '„Neues Archiv“ öffnet die Packliste: Dateien und Ordner hinzufügen — per Button oder Drag & Drop.',
+        '• Format: ZIP, TAR, tar.gz, tar.bz2, tar.xz, tar.zst — oder gzip/bzip2/xz/zstd für einzelne Dateien',
+        '• Kompression: schnell, ausgewogen, klein oder maximal',
+        '• ZIP kann zusätzlich mit AES-256-Passwort verschlüsseln',
+        '„Archiv erstellen …“ fragt nach dem Speicherort — fertig.',
+      ],
+    },
+    {
+      title: 'Fenster & Vollbild',
+      body: [
+        'Die Oberfläche passt sich der Fenstergröße an — die UI skaliert mit, damit nie ein Scrollbalken über die ganze Seite läuft.',
+        'Der Vollbild-Knopf oben rechts wechselt zwischen Fenster- und Vollbild-Modus (alternativ der grüne macOS-Knopf).',
       ],
     },
     {
       title: 'Updates',
       body: [
-        'packed prüft beim Start automatisch, ob eine neue Version bereitliegt, und öffnet dann den Changelog-Dialog.',
-        'Manuell geht es jederzeit über „Nach Updates suchen“ im Hauptfenster.',
-        'Updates kommen signiert von GitHub — die App prüft die Signatur, bevor irgendetwas installiert wird.',
-      ],
-    },
-    {
-      title: 'Was als Nächstes kommt',
-      body: [
-        '• Archive öffnen: ZIP, 7z, TAR, gzip, bzip2, xz, zstd — und RAR entpacken',
-        '• Archive erstellen: offene Formate mit wählbarem Kompressionsgrad',
-        '• AES-256-Verschlüsselung und passwortgeschützte Archive',
-        'Einfach installiert lassen — die Funktionen ziehen als Updates ein, jeweils mit Changelog vorab.',
+        'packed prüft beim Start automatisch auf neue Versionen und zeigt den Changelog — installiert wird erst nach deinem Klick.',
+        'Updates kommen signiert von GitHub; Einstellungen und Dateien bleiben unangetastet.',
       ],
     },
   ],
   sections: [
     {
-      id: 'status',
-      title: 'Aktueller Stand (Beta)',
+      id: 'open',
+      title: 'Archiv öffnen',
       body: [
-        'Diese Beta ist das Grundgerüst von packed: eine schlanke, native App mit signiertem In-App-Updater.',
-        'Der Rust-Core mit den Formaten ZIP (inkl. AES-256), TAR, gzip, bzip2, xz und zstd ist fertig entwickelt und getestet — die Archiv-Oberfläche (Öffnen, Erstellen, Vorschau) kommt Stück für Stück als Update.',
-        'Warum so? Damit du heute installierst und die Funktionen automatisch bei dir ankommen, sobald sie fertig sind — ohne erneuten Download von Hand.',
+        'Drei Wege, ein Archiv zu öffnen:',
+        '• „Archiv wählen …“ auf der Startseite',
+        '• Das Archiv ins packed-Fenster ziehen',
+        '• Aus der Erstellen-Ansicht zurück und dann öffnen',
+        'packed erkennt das Format an den Magic Bytes (nicht nur an der Endung) und zeigt den Inhalt: Dateiname, Originalgröße und gepackte Größe, Ordner mit 📁.',
+        'Unterstützt zum Öffnen: ZIP (auch AES-verschlüsselt), TAR, tar.gz, tar.bz2, tar.xz, tar.zst sowie einzelne gzip-/bzip2-/xz-/zstd-Dateien. 7z und RAR folgen per Update.',
+      ],
+    },
+    {
+      id: 'extract',
+      title: 'Entpacken',
+      body: [
+        '„Alles entpacken …“ fragt nach einem Zielordner und entpackt das komplette Archiv dorthin — die Ordnerstruktur bleibt erhalten.',
+        'Bei verschlüsselten ZIPs (Badge „verschlüsselt“, Schloss an den Einträgen) vorher das Passwort ins Feld unten eintragen.',
+        'Nach dem Entpacken zeigt „Im Finder zeigen“ das Ergebnis direkt im Dateimanager.',
+        'Sicherheit: packed prüft Pfade beim Entpacken und lässt keine Einträge zu, die aus dem Zielordner ausbrechen würden (Zip-Slip-Schutz).',
+      ],
+    },
+    {
+      id: 'create',
+      title: 'Archiv erstellen',
+      body: [
+        '„Neues Archiv“ öffnet die Packliste. Inhalte hinzufügen:',
+        '• „Dateien hinzufügen …“ / „Ordner hinzufügen …“ — Ordner werden rekursiv mit Struktur gepackt',
+        '• Oder Dateien und Ordner einfach ins Fenster ziehen',
+        'Einträge lassen sich über das ✕ wieder entfernen. Unten wählst du Format und Kompression, dann „Archiv erstellen …“ und Speicherort festlegen.',
+      ],
+    },
+    {
+      id: 'formats',
+      title: 'Formate',
+      body: [
+        'Zum Erstellen:',
+        '• ZIP — der Kompatibilitäts-Standard; einziges Format mit Passwort (AES-256)',
+        '• TAR — unkomprimierter Container, ideal als Basis',
+        '• tar.gz / tar.bz2 / tar.xz / tar.zst — TAR plus Kompressor; tar.zst ist die moderne Empfehlung',
+        '• gzip / bzip2 / xz / zstd — komprimieren genau EINE Datei (kein Container); für mehrere Dateien tar.* wählen',
+        'RAR lässt sich technisch nicht erstellen (proprietär) — Lesen folgt per Update.',
+      ],
+    },
+    {
+      id: 'compression',
+      title: 'Kompressionsstufen',
+      body: [
+        'Vier Profile, die je Format auf konkrete Parameter abgebildet werden:',
+        '• schnell — maximaler Durchsatz (zstd -3)',
+        '• ausgewogen — der Alltags-Standard (zstd -12)',
+        '• klein — gutes Verhältnis, akzeptable Zeit (zstd -19 / xz -6)',
+        '• maximal — bestes Ergebnis, dauert (zstd --ultra -22 / LZMA2 max)',
+        'Faustregel: „ausgewogen“ für den Alltag, „maximal“ für Archive, die lange liegen oder verschickt werden.',
+      ],
+    },
+    {
+      id: 'encryption',
+      title: 'Verschlüsselung',
+      body: [
+        'ZIP-Archive lassen sich beim Erstellen mit einem Passwort schützen — verschlüsselt wird mit AES-256.',
+        'Beim Öffnen verschlüsselter ZIPs zeigt packed das Badge „verschlüsselt“; zum Entpacken das Passwort unten eintragen.',
+        'Das Passwort verlässt dein Gerät nie. Und ehrlich: Ein vergessenes AES-256-Passwort kann auch packed nicht wiederherstellen.',
+      ],
+    },
+    {
+      id: 'window',
+      title: 'Fenster, Vollbild & Zoom',
+      body: [
+        'packed kennt zwei Modi: Fenster und Vollbild — umschalten über den Knopf oben rechts oder den grünen macOS-Knopf.',
+        'Die Oberfläche skaliert automatisch mit der Fenstergröße (Zoomstufen von 70 % bis 135 %), sodass alles immer hineinpasst — ohne Seiten-Scrollbalken.',
+        'Nur lange Datei-Listen scrollen intern, mit dezentem schmalem Balken.',
       ],
     },
     {
@@ -94,30 +166,18 @@ const de: Content = {
       title: 'Updates',
       body: [
         'packed prüft bei jedem Start automatisch auf neue Versionen. Liegt eine bereit, öffnet sich der Update-Dialog mit dem Changelog — installiert wird erst nach deinem Klick.',
-        'Manuell prüfen: der Knopf „Nach Updates suchen“ im Hauptfenster.',
-        'Sicherheit: Updates kommen von GitHub (LAN-SOLO/packed) und sind kryptografisch signiert. Die App prüft die Signatur vor jeder Installation — ein manipuliertes Update wird abgelehnt.',
-        'Deine Einstellungen bleiben bei Updates erhalten.',
+        'Manuell prüfen: „Nach Updates suchen“ oben in der Leiste.',
+        'Updates kommen signiert von GitHub (LAN-SOLO/packed): Die App prüft die Signatur vor jeder Installation.',
       ],
     },
     {
       id: 'roadmap',
-      title: 'Geplante Funktionen',
+      title: 'Was noch kommt',
       body: [
-        'Für Version 1.0 geplant — in dieser Reihenfolge ziehen die Funktionen als Updates ein:',
-        '• Öffnen & Entpacken — ZIP, 7z, TAR, gzip, bzip2, xz, zstd, lz4 und RAR, mit Vorschau des Inhalts und Herausziehen einzelner Dateien',
-        '• Erstellen — ZIP (mit AES-256), 7z, TAR und moderne Container, mit Format und Kompressionsgrad direkt beim Packen',
-        '• Extreme Kompression — zstd, LZMA2 und Brotli mit einem Regler von „schnell“ bis „maximal“',
-        '• Verschlüsselung — AES-256 beim Erstellen, passwortgeschützte Archive öffnen',
+        '• 7z öffnen und erstellen, RAR entpacken',
+        '• Einzelne Dateien aus Archiven herausziehen (statt alles zu entpacken)',
+        '• Vorschau von Dateien im Archiv',
         'Später mit packed pro: Stapelverarbeitung, eigene Presets, Mehrfach-Archive (Splits) und Passwort-Wiederherstellung für eigene Archive.',
-        'Ehrlich dazu: RAR erstellen kann kein Tool — das Format ist proprietär. packed entpackt RAR und erstellt offene Formate.',
-      ],
-    },
-    {
-      id: 'pricing',
-      title: 'Free & pro',
-      body: [
-        'packed Free bleibt kostenlos — dauerhaft und ohne Haken: öffnen, erstellen, komprimieren, verschlüsseln.',
-        'packed pro (12 € im Jahr, also 1 € im Monat) kommt später dazu — für Vielpacker: Stapelverarbeitung, Presets, Splits und Passwort-Wiederherstellung.',
       ],
     },
     {
@@ -148,45 +208,117 @@ const en: Content = {
     {
       title: 'Welcome to packed.',
       body: [
-        'packed is becoming one archive tool for everything: open and create ZIP, 7z, TAR and the modern formats — RAR is read.',
-        'You just installed the beta. It is deliberately lean: the foundation with signed in-app updates.',
-        'This tutorial takes half a minute. Reopen it anytime via the ? button in the bottom right.',
+        'packed opens, extracts and creates archives — ZIP, TAR, tar.gz, tar.zst and more, entirely locally.',
+        'The start page offers two paths: “Open archive” and “Create archive”. Or just drop files onto the window.',
+        'This tutorial takes a minute. Reopen it anytime via the ? button in the bottom right.',
       ],
     },
     {
-      title: 'How the beta works',
+      title: 'Opening & extracting',
       body: [
-        'The Rust core (ZIP incl. AES-256, TAR, gzip, bzip2, xz, zstd) is already in place — the archive interface lands piece by piece as updates.',
-        'Every update brings its changelog: you see what changes before installing, and you decide.',
-        'No update ever installs without asking.',
+        'Click “Choose archive …” or drop an archive onto the window — packed lists the contents: name, size, packed size.',
+        'Encrypted ZIPs show a lock icon and the “encrypted” badge — enter the password at the bottom.',
+        '“Extract all …” asks for a destination folder and unpacks everything there. Then: “Reveal in Finder”.',
+      ],
+    },
+    {
+      title: 'Creating archives',
+      body: [
+        '“New archive” opens the pack list: add files and folders — via button or drag & drop.',
+        '• Format: ZIP, TAR, tar.gz, tar.bz2, tar.xz, tar.zst — or gzip/bzip2/xz/zstd for single files',
+        '• Compression: fast, balanced, small or maximum',
+        '• ZIP can additionally encrypt with an AES-256 password',
+        '“Create archive …” asks where to save — done.',
+      ],
+    },
+    {
+      title: 'Window & fullscreen',
+      body: [
+        'The interface adapts to the window size — the UI scales along, so no page-wide scrollbar ever appears.',
+        'The fullscreen button in the top right switches between windowed and fullscreen mode (or use the green macOS button).',
       ],
     },
     {
       title: 'Updates',
       body: [
-        'packed checks for a new version on every launch and opens the changelog dialog when one is available.',
-        'You can also check manually anytime via “Check for updates” in the main window.',
-        'Updates come signed from GitHub — the app verifies the signature before installing anything.',
-      ],
-    },
-    {
-      title: 'What lands next',
-      body: [
-        '• Opening archives: ZIP, 7z, TAR, gzip, bzip2, xz, zstd — and extracting RAR',
-        '• Creating archives: open formats with selectable compression level',
-        '• AES-256 encryption and password-protected archives',
-        'Just keep it installed — features arrive as updates, each with the changelog up front.',
+        'packed checks for new versions on launch and shows the changelog — installing needs your click.',
+        'Updates come signed from GitHub; settings and files stay untouched.',
       ],
     },
   ],
   sections: [
     {
-      id: 'status',
-      title: 'Current state (beta)',
+      id: 'open',
+      title: 'Opening archives',
       body: [
-        'This beta is packed’s foundation: a lean, native app with a signed in-app updater.',
-        'The Rust core with ZIP (incl. AES-256), TAR, gzip, bzip2, xz and zstd is developed and tested — the archive interface (open, create, preview) arrives piece by piece as updates.',
-        'Why this way? So you install once today and the features reach you automatically as they’re finished — no manual re-downloads.',
+        'Three ways to open an archive:',
+        '• “Choose archive …” on the start page',
+        '• Drop the archive onto the packed window',
+        '• Go back from the create view and open one',
+        'packed detects the format by magic bytes (not just the extension) and lists the contents: file name, original size, packed size, folders marked with 📁.',
+        'Supported for opening: ZIP (incl. AES-encrypted), TAR, tar.gz, tar.bz2, tar.xz, tar.zst, plus single gzip/bzip2/xz/zstd files. 7z and RAR follow via update.',
+      ],
+    },
+    {
+      id: 'extract',
+      title: 'Extracting',
+      body: [
+        '“Extract all …” asks for a destination folder and unpacks the whole archive there — folder structure preserved.',
+        'For encrypted ZIPs (badge “encrypted”, lock on entries), enter the password in the field at the bottom first.',
+        'After extraction, “Reveal in Finder” shows the result in the file manager.',
+        'Safety: packed validates paths during extraction and rejects entries that would escape the destination folder (zip-slip protection).',
+      ],
+    },
+    {
+      id: 'create',
+      title: 'Creating archives',
+      body: [
+        '“New archive” opens the pack list. Add content:',
+        '• “Add files …” / “Add folder …” — folders are packed recursively with their structure',
+        '• Or simply drop files and folders onto the window',
+        'Entries can be removed via ✕. Choose format and compression at the bottom, then “Create archive …” and pick a location.',
+      ],
+    },
+    {
+      id: 'formats',
+      title: 'Formats',
+      body: [
+        'For creating:',
+        '• ZIP — the compatibility standard; the only format with password support (AES-256)',
+        '• TAR — uncompressed container, ideal as a base',
+        '• tar.gz / tar.bz2 / tar.xz / tar.zst — TAR plus a compressor; tar.zst is the modern recommendation',
+        '• gzip / bzip2 / xz / zstd — compress exactly ONE file (no container); pick tar.* for multiple files',
+        'RAR cannot technically be created (proprietary) — reading follows via update.',
+      ],
+    },
+    {
+      id: 'compression',
+      title: 'Compression levels',
+      body: [
+        'Four profiles, mapped to concrete parameters per format:',
+        '• fast — maximum throughput (zstd -3)',
+        '• balanced — the everyday default (zstd -12)',
+        '• small — good ratio, acceptable time (zstd -19 / xz -6)',
+        '• maximum — best result, takes a while (zstd --ultra -22 / LZMA2 max)',
+        'Rule of thumb: “balanced” for daily use, “maximum” for archives that will be stored long or shipped.',
+      ],
+    },
+    {
+      id: 'encryption',
+      title: 'Encryption',
+      body: [
+        'ZIP archives can be protected with a password at creation — encrypted with AES-256.',
+        'When opening encrypted ZIPs, packed shows the “encrypted” badge; enter the password at the bottom to extract.',
+        'The password never leaves your device. And honestly: a forgotten AES-256 password cannot be recovered — not even by packed.',
+      ],
+    },
+    {
+      id: 'window',
+      title: 'Window, fullscreen & zoom',
+      body: [
+        'packed has two modes: windowed and fullscreen — toggle via the button in the top right or the green macOS button.',
+        'The interface scales automatically with the window size (zoom levels from 70% to 135%), so everything always fits — without a page scrollbar.',
+        'Only long file lists scroll internally, with a subtle slim bar.',
       ],
     },
     {
@@ -194,30 +326,18 @@ const en: Content = {
       title: 'Updates',
       body: [
         'packed checks for new versions automatically on every launch. When one is available, the update dialog opens with the changelog — installing needs your click.',
-        'Check manually: the “Check for updates” button in the main window.',
-        'Security: updates come from GitHub (LAN-SOLO/packed) and are cryptographically signed. The app verifies the signature before every install — a tampered update is rejected.',
-        'Your settings survive every update.',
+        'Check manually: “Check for updates” in the top bar.',
+        'Updates come signed from GitHub (LAN-SOLO/packed): the app verifies the signature before every install.',
       ],
     },
     {
       id: 'roadmap',
-      title: 'Planned features',
+      title: 'What’s coming',
       body: [
-        'Planned for version 1.0 — features arrive as updates roughly in this order:',
-        '• Open & extract — ZIP, 7z, TAR, gzip, bzip2, xz, zstd, lz4 and RAR, with content preview and single-file extraction',
-        '• Create — ZIP (with AES-256), 7z, TAR and modern containers, with format and compression level at pack time',
-        '• Extreme compression — zstd, LZMA2 and Brotli with a slider from “fast” to “maximum”',
-        '• Encryption — AES-256 on create, opening password-protected archives',
+        '• Opening and creating 7z, extracting RAR',
+        '• Extracting single files from archives (instead of everything)',
+        '• Previewing files inside archives',
         'Later with packed pro: batch processing, custom presets, split archives and password recovery for your own archives.',
-        'Honestly: no tool can create RAR — the format is proprietary. packed extracts RAR and creates open formats.',
-      ],
-    },
-    {
-      id: 'pricing',
-      title: 'Free & pro',
-      body: [
-        'packed Free stays free — for good, no strings attached: open, create, compress, encrypt.',
-        'packed pro (€12 a year, that’s €1 a month) follows later — for heavy packers: batch processing, presets, splits and password recovery.',
       ],
     },
     {
@@ -242,7 +362,7 @@ export default function Help() {
   const [sel, setSel] = useState(c.sections[0].id);
   const [q, setQ] = useState('');
 
-  // externe Öffnung, z. B. über die Buttons in der Shell
+  // externe Öffnung, z. B. per Custom-Event aus der App
   useEffect(() => {
     const onOpen = (e: Event) => {
       const detail = (e as CustomEvent).detail;

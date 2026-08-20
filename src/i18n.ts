@@ -1,11 +1,58 @@
-/** Minimal UI strings (de/en) for the app shell — grows with the real UI. */
+/** UI strings (de/en) for the packed app. */
 const de = {
   subtitle: 'Archive öffnen, erstellen, extrem komprimieren',
-  statusTitle: 'Alpha-Grundgerüst',
-  statusText:
-    'Das ist das App-Grundgerüst von packed: Der Rust-Core (Formaterkennung, ' +
-    'Erstellen, Öffnen, Entpacken) steht — die Oberfläche entsteht gerade. ' +
-    'Updates kommen ab jetzt signiert direkt in die App.',
+  // home
+  homeOpenTitle: 'Archiv öffnen',
+  homeOpenText:
+    'ZIP, tar.gz, tar.zst & Co. ansehen und entpacken — Datei wählen oder einfach ins Fenster ziehen.',
+  homeOpenBtn: 'Archiv wählen …',
+  homeCreateTitle: 'Archiv erstellen',
+  homeCreateText:
+    'Dateien und Ordner in ZIP oder tar.* packen — mit Kompressionsgrad und optional AES-256-Passwort.',
+  homeCreateBtn: 'Neues Archiv',
+  dropHint: '// Tipp: Archive lassen sich jederzeit ins Fenster ziehen',
+  // listing
+  back: 'Zurück',
+  entries: (n: number) => `${n} Einträge`,
+  colName: 'Name',
+  colSize: 'Größe',
+  colPacked: 'Gepackt',
+  encryptedBadge: 'verschlüsselt',
+  passwordLabel: 'Passwort',
+  passwordPlaceholder: 'Passwort für verschlüsselte Einträge',
+  extractAll: 'Alles entpacken …',
+  extracting: 'Entpacke …',
+  extracted: (n: number) => `${n} Dateien entpackt`,
+  chooseDestTitle: 'Zielordner wählen',
+  openError: 'Archiv lässt sich nicht öffnen',
+  extractError: 'Entpacken fehlgeschlagen',
+  revealBtn: 'Im Finder zeigen',
+  dirLabel: 'Ordner',
+  // create
+  createTitle: 'Neues Archiv',
+  addFiles: 'Dateien hinzufügen …',
+  addFolder: 'Ordner hinzufügen …',
+  createEmpty: 'Noch keine Dateien. Hinzufügen — oder einfach ins Fenster ziehen.',
+  remove: 'Entfernen',
+  formatLabel: 'Format',
+  levelLabel: 'Kompression',
+  levelFast: 'schnell',
+  levelBalanced: 'ausgewogen',
+  levelSmall: 'klein',
+  levelMaximum: 'maximal',
+  passwordCreateLabel: 'Passwort (optional, nur ZIP — AES-256)',
+  singleStreamHint:
+    'gzip/bzip2/xz/zstd packen genau eine Datei. Für mehrere Dateien tar.gz & Co. wählen.',
+  createBtn: 'Archiv erstellen …',
+  creating: 'Packe …',
+  created: (n: number) => `Archiv mit ${n} Dateien erstellt`,
+  createError: 'Erstellen fehlgeschlagen',
+  saveArchiveTitle: 'Archiv speichern unter',
+  items: (n: number) => `${n} Elemente`,
+  // header
+  fullscreenEnter: 'Vollbild',
+  fullscreenExit: 'Vollbild verlassen',
+  // updates
   checkForUpdates: 'Nach Updates suchen',
   updateChecking: 'Prüfe …',
   upToDate: 'packed ist aktuell.',
@@ -20,25 +67,57 @@ const de = {
     'Das Update ersetzt nur die App selbst (signiert & verifiziert) — Ihre Dateien und Einstellungen bleiben unangetastet.',
   updateInstalling: 'Update wird installiert — die App startet gleich neu …',
   updateFailed: 'Update fehlgeschlagen',
-  roadmapTitle: 'Was als Nächstes kommt',
-  roadmap: [
-    'Öffnen & Entpacken — ZIP, 7z, TAR, gzip, bzip2, xz, zstd, und RAR lesen',
-    'Erstellen — offene Formate mit wählbarem Kompressionsgrad',
-    'AES-256-Verschlüsselung & passwortgeschützte Archive',
-  ],
-  roadmapHint:
-    'Die Funktionen ziehen als Updates ein — jeweils mit Changelog vorab, genau über das Fenster hier.',
-  openManual: 'Handbuch öffnen',
-  startTutorial: 'Tutorial starten',
 };
 
 const en: typeof de = {
   subtitle: 'Open, create and hard-compress archives',
-  statusTitle: 'Alpha shell',
-  statusText:
-    'This is the packed app shell: the Rust core (format detection, create, ' +
-    'open, extract) is in place — the interface is being built. From now on, ' +
-    'updates arrive signed, directly in the app.',
+  homeOpenTitle: 'Open archive',
+  homeOpenText:
+    'Inspect and extract ZIP, tar.gz, tar.zst & co. — pick a file or just drop it onto the window.',
+  homeOpenBtn: 'Choose archive …',
+  homeCreateTitle: 'Create archive',
+  homeCreateText:
+    'Pack files and folders into ZIP or tar.* — with compression level and optional AES-256 password.',
+  homeCreateBtn: 'New archive',
+  dropHint: '// tip: you can drop archives onto this window anytime',
+  back: 'Back',
+  entries: (n: number) => `${n} entries`,
+  colName: 'Name',
+  colSize: 'Size',
+  colPacked: 'Packed',
+  encryptedBadge: 'encrypted',
+  passwordLabel: 'Password',
+  passwordPlaceholder: 'Password for encrypted entries',
+  extractAll: 'Extract all …',
+  extracting: 'Extracting …',
+  extracted: (n: number) => `${n} files extracted`,
+  chooseDestTitle: 'Choose destination folder',
+  openError: 'Cannot open archive',
+  extractError: 'Extraction failed',
+  revealBtn: 'Reveal in Finder',
+  dirLabel: 'folder',
+  createTitle: 'New archive',
+  addFiles: 'Add files …',
+  addFolder: 'Add folder …',
+  createEmpty: 'No files yet. Add some — or just drop them onto the window.',
+  remove: 'Remove',
+  formatLabel: 'Format',
+  levelLabel: 'Compression',
+  levelFast: 'fast',
+  levelBalanced: 'balanced',
+  levelSmall: 'small',
+  levelMaximum: 'maximum',
+  passwordCreateLabel: 'Password (optional, ZIP only — AES-256)',
+  singleStreamHint:
+    'gzip/bzip2/xz/zstd pack exactly one file. For multiple files pick tar.gz & co.',
+  createBtn: 'Create archive …',
+  creating: 'Packing …',
+  created: (n: number) => `Archive with ${n} files created`,
+  createError: 'Creating failed',
+  saveArchiveTitle: 'Save archive as',
+  items: (n: number) => `${n} items`,
+  fullscreenEnter: 'Fullscreen',
+  fullscreenExit: 'Exit fullscreen',
   checkForUpdates: 'Check for updates',
   updateChecking: 'Checking …',
   upToDate: 'packed is up to date.',
@@ -53,16 +132,6 @@ const en: typeof de = {
     'The update replaces only the app itself (signed & verified) — your files and settings stay untouched.',
   updateInstalling: 'Installing update — the app will restart shortly …',
   updateFailed: 'Update failed',
-  roadmapTitle: 'What lands next',
-  roadmap: [
-    'Open & extract — ZIP, 7z, TAR, gzip, bzip2, xz, zstd, plus reading RAR',
-    'Create — open formats with selectable compression level',
-    'AES-256 encryption & password-protected archives',
-  ],
-  roadmapHint:
-    'Features arrive as updates — each with its changelog up front, right through this window.',
-  openManual: 'Open manual',
-  startTutorial: 'Start tutorial',
 };
 
 export const t = navigator.language.toLowerCase().startsWith('de') ? de : en;

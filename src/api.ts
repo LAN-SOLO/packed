@@ -7,7 +7,55 @@ export interface UpdateInfo {
   date: string | null;
 }
 
+export interface ArchiveEntry {
+  name: string;
+  size: number;
+  compressedSize: number;
+  isDir: boolean;
+  encrypted: boolean;
+}
+
+export interface Listing {
+  format: string;
+  formatWritable: boolean;
+  encrypted: boolean;
+  entries: ArchiveEntry[];
+  totalSize: number;
+}
+
+export type CreateFormat =
+  | 'zip'
+  | 'tar'
+  | 'tar.gz'
+  | 'tar.bz2'
+  | 'tar.xz'
+  | 'tar.zst'
+  | 'gzip'
+  | 'bzip2'
+  | 'xz'
+  | 'zstd';
+
+export type Level = 'fast' | 'balanced' | 'small' | 'maximum';
+
 export const api = {
+  inspectArchive: (path: string) => invoke<Listing>('inspect_archive', { path }),
+  extractArchive: (path: string, dest: string, password?: string) =>
+    invoke<number>('extract_archive', { path, dest, password: password ?? null }),
+  createArchive: (
+    dest: string,
+    format: CreateFormat,
+    sources: string[],
+    level: Level,
+    password?: string
+  ) =>
+    invoke<number>('create_archive', {
+      dest,
+      format,
+      sources,
+      level,
+      password: password ?? null,
+    }),
+  revealPath: (path: string) => invoke<void>('reveal_path', { path }),
   checkUpdate: () => invoke<UpdateInfo | null>('check_update'),
   installUpdate: () => invoke<void>('install_update'),
 };

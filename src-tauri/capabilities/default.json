@@ -3,5 +3,11 @@
   "identifier": "default",
   "description": "packed main window",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-fullscreen",
+    "core:window:allow-is-fullscreen",
+    "dialog:default",
+    "opener:default"
+  ]
 }
