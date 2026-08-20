@@ -74,6 +74,31 @@ export default function App() {
         <div className="faint safenote">{t.updateSafeNote}</div>
       </section>
 
+      <section className="card">
+        <h2>{t.roadmapTitle}</h2>
+        <ul className="roadmap">
+          {t.roadmap.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+        <div className="faint safenote">{t.roadmapHint}</div>
+        <div className="updrow">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-help', { detail: 'manual' }))}
+          >
+            {t.openManual}
+          </button>
+          <button
+            className="ghost"
+            onClick={() =>
+              window.dispatchEvent(new CustomEvent('open-help', { detail: 'tutorial' }))
+            }
+          >
+            {t.startTutorial}
+          </button>
+        </div>
+      </section>
+
       {showUpdateModal && update !== 'unchecked' && update !== null && (
         <UpdateModal info={update} onToast={toast} onClose={() => setShowUpdateModal(false)} />
       )}

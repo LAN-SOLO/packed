@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Selbstständiges Hilfe-System: schwebender ?-Button, First-Run-Tutorial
 // und durchsuchbares Handbuch. Sprache folgt wie i18n.ts der Systemsprache.
@@ -241,6 +241,17 @@ export default function Help() {
   const [step, setStep] = useState(0);
   const [sel, setSel] = useState(c.sections[0].id);
   const [q, setQ] = useState('');
+
+  // externe Öffnung, z. B. über die Buttons in der Shell
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      setStep(0);
+      setMode(detail === 'tutorial' ? 'tutorial' : 'manual');
+    };
+    window.addEventListener('open-help', onOpen);
+    return () => window.removeEventListener('open-help', onOpen);
+  }, []);
 
   const close = () => {
     localStorage.setItem(SEEN_KEY, '1');

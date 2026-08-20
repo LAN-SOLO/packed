@@ -404,3 +404,19 @@ button.ghost {
   z-index: 50;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
+
+/* roadmap card */
+ul.roadmap { list-style: none; margin: 10px 0 12px; padding: 0; }
+ul.roadmap li {
+  position: relative;
+  padding-left: 20px;
+  margin-bottom: 8px;
+  line-height: 1.55;
+  color: var(--text-dim, #8fa3bf);
+}
+ul.roadmap li::before {
+  content: '▸';
+  position: absolute;
+  left: 2px;
+  color: var(--blue-dim, #0ea5e9);
+}
