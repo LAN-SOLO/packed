@@ -623,3 +623,9 @@ input:focus, select:focus { border-color: var(--accent-deep); }
   flex-shrink: 0;
   margin-top: -6px;
 }
+
+/* v0.3.1: konsistente Button-Reihe unten */
+button.subtle { color: var(--faint); }
+button.subtle:hover:not(:disabled) { color: var(--text); border-color: var(--border); }
+.workbottom:not(.create-opts) { align-items: center; }
+.workbottom button { white-space: nowrap; }

@@ -539,7 +539,7 @@ export default function App() {
                 )}
                 {selectedFileCount > 0 ? (
                   <>
-                    <button className="ghost" onClick={() => setSelected(new Set())}>
+                    <button className="subtle" onClick={() => setSelected(new Set())}>
                       {t.clearSelection}
                     </button>
                     <button onClick={extractAll} disabled={busy}>
