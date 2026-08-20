@@ -3,15 +3,23 @@ import { useEffect, useState } from 'react';
 // Selbstständiges Hilfe-System: schwebender ?-Button, First-Run-Tutorial
 // und durchsuchbares Handbuch. Sprache folgt wie i18n.ts der Systemsprache.
 
+/** Interaktive Aktion: schließt die Hilfe und löst die Funktion in der App aus. */
+interface Action {
+  label: string;
+  cmd: 'open' | 'create' | 'updates';
+}
+
 interface Step {
   title: string;
   body: string[];
+  action?: Action;
 }
 
 interface Section {
   id: string;
   title: string;
   body: string[];
+  action?: Action;
 }
 
 interface Content {
@@ -50,7 +58,7 @@ const de: Content = {
       body: [
         'packed öffnet, entpackt und erstellt Archive — ZIP, TAR, tar.gz, tar.zst und mehr, komplett lokal.',
         'Die Startseite bietet zwei Wege: „Archiv öffnen“ und „Archiv erstellen“. Oder du ziehst einfach Dateien ins Fenster.',
-        'Dieses Tutorial dauert eine Minute. Du findest es jederzeit wieder über den ?-Knopf unten rechts.',
+        'Dieses Tutorial dauert eine Minute. Du findest es jederzeit wieder über „Hilfe“ oben in der Leiste — dort wartet auch das Handbuch.',
       ],
     },
     {
@@ -60,6 +68,7 @@ const de: Content = {
         'Verschlüsselte ZIPs erkennst du am Schloss-Symbol und dem Badge „verschlüsselt“ — das Passwort trägst du unten ein.',
         '„Alles entpacken …“ fragt nach dem Zielordner und packt alles dorthin aus. Danach: „Im Finder zeigen“.',
       ],
+      action: { label: 'Gleich ausprobieren: Archiv öffnen …', cmd: 'open' },
     },
     {
       title: 'Archiv erstellen',
@@ -70,6 +79,7 @@ const de: Content = {
         '• ZIP kann zusätzlich mit AES-256-Passwort verschlüsseln',
         '„Archiv erstellen …“ fragt nach dem Speicherort — fertig.',
       ],
+      action: { label: 'Gleich ausprobieren: Neues Archiv', cmd: 'create' },
     },
     {
       title: 'Fenster & Vollbild',
@@ -84,6 +94,7 @@ const de: Content = {
         'packed prüft beim Start automatisch auf neue Versionen und zeigt den Changelog — installiert wird erst nach deinem Klick.',
         'Updates kommen signiert von GitHub; Einstellungen und Dateien bleiben unangetastet.',
       ],
+      action: { label: 'Jetzt nach Updates suchen', cmd: 'updates' },
     },
   ],
   sections: [
@@ -98,6 +109,7 @@ const de: Content = {
         'packed erkennt das Format an den Magic Bytes (nicht nur an der Endung) und zeigt den Inhalt: Dateiname, Originalgröße und gepackte Größe, Ordner mit 📁.',
         'Unterstützt zum Öffnen: ZIP (auch AES-verschlüsselt), TAR, tar.gz, tar.bz2, tar.xz, tar.zst sowie einzelne gzip-/bzip2-/xz-/zstd-Dateien. 7z und RAR folgen per Update.',
       ],
+      action: { label: 'Archiv öffnen …', cmd: 'open' },
     },
     {
       id: 'extract',
@@ -108,6 +120,7 @@ const de: Content = {
         'Nach dem Entpacken zeigt „Im Finder zeigen“ das Ergebnis direkt im Dateimanager.',
         'Sicherheit: packed prüft Pfade beim Entpacken und lässt keine Einträge zu, die aus dem Zielordner ausbrechen würden (Zip-Slip-Schutz).',
       ],
+      action: { label: 'Archiv öffnen …', cmd: 'open' },
     },
     {
       id: 'create',
@@ -118,6 +131,7 @@ const de: Content = {
         '• Oder Dateien und Ordner einfach ins Fenster ziehen',
         'Einträge lassen sich über das ✕ wieder entfernen. Unten wählst du Format und Kompression, dann „Archiv erstellen …“ und Speicherort festlegen.',
       ],
+      action: { label: 'Neues Archiv anlegen', cmd: 'create' },
     },
     {
       id: 'formats',
@@ -169,6 +183,7 @@ const de: Content = {
         'Manuell prüfen: „Nach Updates suchen“ oben in der Leiste.',
         'Updates kommen signiert von GitHub (LAN-SOLO/packed): Die App prüft die Signatur vor jeder Installation.',
       ],
+      action: { label: 'Jetzt nach Updates suchen', cmd: 'updates' },
     },
     {
       id: 'roadmap',
@@ -210,7 +225,7 @@ const en: Content = {
       body: [
         'packed opens, extracts and creates archives — ZIP, TAR, tar.gz, tar.zst and more, entirely locally.',
         'The start page offers two paths: “Open archive” and “Create archive”. Or just drop files onto the window.',
-        'This tutorial takes a minute. Reopen it anytime via the ? button in the bottom right.',
+        'This tutorial takes a minute. Reopen it anytime via “Help” in the top bar — the manual lives there too.',
       ],
     },
     {
@@ -220,6 +235,7 @@ const en: Content = {
         'Encrypted ZIPs show a lock icon and the “encrypted” badge — enter the password at the bottom.',
         '“Extract all …” asks for a destination folder and unpacks everything there. Then: “Reveal in Finder”.',
       ],
+      action: { label: 'Try it now: open an archive …', cmd: 'open' },
     },
     {
       title: 'Creating archives',
@@ -230,6 +246,7 @@ const en: Content = {
         '• ZIP can additionally encrypt with an AES-256 password',
         '“Create archive …” asks where to save — done.',
       ],
+      action: { label: 'Try it now: new archive', cmd: 'create' },
     },
     {
       title: 'Window & fullscreen',
@@ -244,6 +261,7 @@ const en: Content = {
         'packed checks for new versions on launch and shows the changelog — installing needs your click.',
         'Updates come signed from GitHub; settings and files stay untouched.',
       ],
+      action: { label: 'Check for updates now', cmd: 'updates' },
     },
   ],
   sections: [
@@ -258,6 +276,7 @@ const en: Content = {
         'packed detects the format by magic bytes (not just the extension) and lists the contents: file name, original size, packed size, folders marked with 📁.',
         'Supported for opening: ZIP (incl. AES-encrypted), TAR, tar.gz, tar.bz2, tar.xz, tar.zst, plus single gzip/bzip2/xz/zstd files. 7z and RAR follow via update.',
       ],
+      action: { label: 'Open an archive …', cmd: 'open' },
     },
     {
       id: 'extract',
@@ -268,6 +287,7 @@ const en: Content = {
         'After extraction, “Reveal in Finder” shows the result in the file manager.',
         'Safety: packed validates paths during extraction and rejects entries that would escape the destination folder (zip-slip protection).',
       ],
+      action: { label: 'Open an archive …', cmd: 'open' },
     },
     {
       id: 'create',
@@ -278,6 +298,7 @@ const en: Content = {
         '• Or simply drop files and folders onto the window',
         'Entries can be removed via ✕. Choose format and compression at the bottom, then “Create archive …” and pick a location.',
       ],
+      action: { label: 'Create a new archive', cmd: 'create' },
     },
     {
       id: 'formats',
@@ -329,6 +350,7 @@ const en: Content = {
         'Check manually: “Check for updates” in the top bar.',
         'Updates come signed from GitHub (LAN-SOLO/packed): the app verifies the signature before every install.',
       ],
+      action: { label: 'Check for updates now', cmd: 'updates' },
     },
     {
       id: 'roadmap',
@@ -362,16 +384,47 @@ export default function Help() {
   const [sel, setSel] = useState(c.sections[0].id);
   const [q, setQ] = useState('');
 
-  // externe Öffnung, z. B. per Custom-Event aus der App
+  // externe Öffnung, z. B. per Custom-Event aus der App.
+  // detail: 'tutorial' | 'manual' | { mode, section } — section = Kontext-Hilfe
   useEffect(() => {
     const onOpen = (e: Event) => {
       const detail = (e as CustomEvent).detail;
       setStep(0);
-      setMode(detail === 'tutorial' ? 'tutorial' : 'manual');
+      if (typeof detail === 'object' && detail !== null) {
+        if (detail.section) setSel(detail.section);
+        setMode(detail.mode === 'tutorial' ? 'tutorial' : 'manual');
+      } else {
+        setMode(detail === 'tutorial' ? 'tutorial' : 'manual');
+      }
     };
     window.addEventListener('open-help', onOpen);
     return () => window.removeEventListener('open-help', onOpen);
   }, []);
+
+  // Tastatur: Esc schließt, ←/→ blättern im Tutorial
+  useEffect(() => {
+    if (mode === 'closed') return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        localStorage.setItem(SEEN_KEY, '1');
+        setMode('closed');
+        setStep(0);
+      }
+      if (mode === 'tutorial') {
+        if (e.key === 'ArrowRight') setStep((s) => Math.min(s + 1, c.tutorial.length - 1));
+        if (e.key === 'ArrowLeft') setStep((s) => Math.max(s - 1, 0));
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mode, c.tutorial.length]);
+
+  const runAction = (action: Action) => {
+    localStorage.setItem(SEEN_KEY, '1');
+    setMode('closed');
+    setStep(0);
+    window.dispatchEvent(new CustomEvent('help-action', { detail: action.cmd }));
+  };
 
   const close = () => {
     localStorage.setItem(SEEN_KEY, '1');
@@ -391,9 +444,6 @@ export default function Help() {
 
   return (
     <>
-      <button className="hlp-fab" title={c.labels.fab} onClick={() => setMode('manual')}>
-        ?
-      </button>
       {mode !== 'closed' && (
         <div className="hlp-overlay" onClick={close}>
           <div className="hlp-modal" onClick={(e) => e.stopPropagation()}>
@@ -437,6 +487,14 @@ export default function Help() {
                   ) : (
                     <p key={i}>{p}</p>
                   )
+                )}
+                {c.tutorial[step].action && (
+                  <button
+                    className="hlp-action"
+                    onClick={() => runAction(c.tutorial[step].action!)}
+                  >
+                    ▸ {c.tutorial[step].action!.label}
+                  </button>
                 )}
                 <div className="hlp-tut-nav">
                   <button className="hlp-ghost" onClick={close}>
@@ -497,6 +555,14 @@ export default function Help() {
                         ) : (
                           <p key={i}>{p}</p>
                         )
+                      )}
+                      {current.action && (
+                        <button
+                          className="hlp-action"
+                          onClick={() => runAction(current.action!)}
+                        >
+                          ▸ {current.action!.label}
+                        </button>
                       )}
                     </>
                   )}

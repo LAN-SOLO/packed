@@ -144,6 +144,35 @@ export default function App() {
       .catch(() => {});
   }, []);
 
+  // Interaktive Hilfe: Aktions-Buttons im Handbuch steuern die App
+  useEffect(() => {
+    const onAction = (e: Event) => {
+      const cmd = (e as CustomEvent).detail;
+      if (cmd === 'open') pickArchive();
+      if (cmd === 'create') {
+        setSources([]);
+        setView({ kind: 'create' });
+      }
+      if (cmd === 'updates') doCheckUpdate();
+    };
+    window.addEventListener('help-action', onAction);
+    return () => window.removeEventListener('help-action', onAction);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // F1 oder ⌘/ öffnet die Kontext-Hilfe
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'F1' || ((e.metaKey || e.ctrlKey) && e.key === '/')) {
+        e.preventDefault();
+        openContextHelp();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Fortschritts-Events der Engine
   useEffect(() => {
     const un = listen<ProgressEvent>('pack-progress', ({ payload }) => {
@@ -281,6 +310,17 @@ export default function App() {
     }
   };
 
+  // Kontext-Hilfe: öffnet das Handbuch beim passenden Kapitel zur aktuellen Ansicht
+  const openContextHelp = () => {
+    const section =
+      viewRef.current.kind === 'listing'
+        ? 'extract'
+        : viewRef.current.kind === 'create'
+          ? 'create'
+          : 'open';
+    window.dispatchEvent(new CustomEvent('open-help', { detail: { mode: 'manual', section } }));
+  };
+
   const toggleFullscreen = async () => {
     const w = getCurrentWindow();
     const next = !(await w.isFullscreen());
@@ -308,6 +348,9 @@ export default function App() {
             {checking ? t.updateChecking : t.checkForUpdates}
           </button>
         )}
+        <button className="small" title="F1" onClick={openContextHelp}>
+          {t.helpBtn}
+        </button>
         <button className="small" onClick={toggleFullscreen}>
           {isFs ? t.fullscreenExit : t.fullscreenEnter}
         </button>

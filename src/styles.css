@@ -585,3 +585,18 @@ input:focus, select:focus { border-color: var(--accent-deep); }
 .entry-row:last-child { border-bottom: none; }
 .action-card { transition: border-color 0.15s; }
 .action-card:hover { border-color: var(--accent-deep); }
+
+/* interaktive Hilfe-Aktionen */
+.hlp-action {
+  align-self: flex-start;
+  margin: 6px 0 4px;
+  font: inherit;
+  font-family: var(--mono);
+  background: rgba(2, 132, 199, 0.12);
+  border: 1px solid var(--accent-deep);
+  border-radius: 8px;
+  color: var(--accent);
+  padding: 8px 14px;
+  cursor: pointer;
+}
+.hlp-action:hover { background: rgba(2, 132, 199, 0.25); }

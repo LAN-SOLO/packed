@@ -60,6 +60,7 @@ const de = {
   archiveLabel: 'Archiv',
   folderBadge: 'Ordner',
   // header
+  helpBtn: '? Hilfe',
   fullscreenEnter: 'Vollbild',
   fullscreenExit: 'Vollbild verlassen',
   // updates
@@ -135,6 +136,7 @@ const en: typeof de = {
   contentLabel: 'content',
   archiveLabel: 'archive',
   folderBadge: 'folder',
+  helpBtn: '? Help',
   fullscreenEnter: 'Fullscreen',
   fullscreenExit: 'Exit fullscreen',
   checkForUpdates: 'Check for updates',
