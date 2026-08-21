@@ -199,6 +199,8 @@ pub fn edit_zip(
     }
 
     let entries = zip.len() - removed + normalized_dirs.len() + edit.add_files.len();
+    // Windows: das Original lässt sich nur ersetzen, wenn es nicht mehr offen ist
+    drop(zip);
     let tmp = writer.finish()?;
     tmp.persist(path).map_err(|e| CoreError::Io(e.error))?;
     Ok(EditResult {
