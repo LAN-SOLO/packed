@@ -57,8 +57,28 @@ export type CreateFormat =
 
 export type Level = 'fast' | 'balanced' | 'small' | 'maximum';
 
+/** One batch of ZIP edits; the command rewrites the archive and returns the fresh listing. */
+export interface EditOps {
+  deletes?: string[];
+  renames?: { from: string; to: string }[];
+  /** files/folders from disk, added at the archive root (folders recursive) */
+  addPaths?: string[];
+  /** new empty folders inside the archive */
+  addDirs?: string[];
+  password?: string;
+}
+
 export const api = {
   inspectArchive: (path: string) => invoke<Listing>('inspect_archive', { path }),
+  editArchive: (path: string, ops: EditOps) =>
+    invoke<Listing>('edit_archive', {
+      path,
+      deletes: ops.deletes ?? [],
+      renames: ops.renames ?? [],
+      addPaths: ops.addPaths ?? [],
+      addDirs: ops.addDirs ?? [],
+      password: ops.password ?? null,
+    }),
   extractArchive: (path: string, dest: string, password?: string) =>
     invoke<number>('extract_archive', { path, dest, password: password ?? null }),
   extractEntries: (path: string, dest: string, names: string[], password?: string) =>

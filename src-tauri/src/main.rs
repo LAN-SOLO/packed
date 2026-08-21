@@ -3,9 +3,10 @@
 
 use packed_core::compress::Level;
 use packed_core::create::{collect, create_with_progress};
+use packed_core::edit::{edit_zip, Rename, ZipEdit};
 use packed_core::extract::{extract_all_with_progress, extract_entries_with_progress};
 use packed_core::Format;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use tauri::Emitter;
 
@@ -91,32 +92,78 @@ fn format_from_str(s: &str) -> Result<Format, String> {
     })
 }
 
+fn build_listing(path: &Path) -> Result<ListingDto, String> {
+    let listing = packed_core::list::list(path).map_err(|e| e.to_string())?;
+    let total_size = listing.entries.iter().map(|e| e.size).sum();
+    let archive_size = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+    Ok(ListingDto {
+        format: listing.format.label().to_string(),
+        format_writable: listing.format.is_writable(),
+        encrypted: listing.encrypted,
+        total_size,
+        archive_size,
+        entries: listing
+            .entries
+            .into_iter()
+            .map(|e| EntryDto {
+                name: e.name,
+                size: e.size,
+                compressed_size: e.compressed_size,
+                is_dir: e.is_dir,
+                encrypted: e.encrypted,
+            })
+            .collect(),
+    })
+}
+
 /// List an archive's contents without extracting.
 #[tauri::command]
 async fn inspect_archive(path: String) -> Result<ListingDto, String> {
+    tauri::async_runtime::spawn_blocking(move || build_listing(&PathBuf::from(&path)))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RenameDto {
+    pub from: String,
+    pub to: String,
+}
+
+/// Edit an opened ZIP in place: delete/rename entries, add files or folders
+/// from disk (`add_paths`, recursive) and create new empty folders
+/// (`add_dirs`). Returns the fresh listing after the rewrite.
+#[tauri::command]
+async fn edit_archive(
+    path: String,
+    deletes: Vec<String>,
+    renames: Vec<RenameDto>,
+    add_paths: Vec<String>,
+    add_dirs: Vec<String>,
+    password: Option<String>,
+) -> Result<ListingDto, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let pb = PathBuf::from(&path);
-        let listing = packed_core::list::list(&pb).map_err(|e| e.to_string())?;
-        let total_size = listing.entries.iter().map(|e| e.size).sum();
-        let archive_size = std::fs::metadata(&pb).map(|m| m.len()).unwrap_or(0);
-        Ok(ListingDto {
-            format: listing.format.label().to_string(),
-            format_writable: listing.format.is_writable(),
-            encrypted: listing.encrypted,
-            total_size,
-            archive_size,
-            entries: listing
-                .entries
+        let paths: Vec<PathBuf> = add_paths.iter().map(PathBuf::from).collect();
+        let add_files = collect(&paths).map_err(|e| e.to_string())?;
+        let edit = ZipEdit {
+            deletes,
+            renames: renames
                 .into_iter()
-                .map(|e| EntryDto {
-                    name: e.name,
-                    size: e.size,
-                    compressed_size: e.compressed_size,
-                    is_dir: e.is_dir,
-                    encrypted: e.encrypted,
-                })
+                .map(|r| Rename { from: r.from, to: r.to })
                 .collect(),
-        })
+            add_files,
+            add_dirs,
+        };
+        edit_zip(
+            &pb,
+            &edit,
+            Level::Balanced,
+            password.as_deref().filter(|p| !p.is_empty()),
+        )
+        .map_err(|e| e.to_string())?;
+        build_listing(&pb)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -310,6 +357,7 @@ fn main() {
         .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![
             inspect_archive,
+            edit_archive,
             extract_archive,
             extract_entries,
             create_archive,

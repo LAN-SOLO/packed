@@ -6,8 +6,10 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import {
   api,
+  ArchiveEntry,
   CreateFormat,
   CreateResult,
+  EditOps,
   Level,
   Listing,
   PathStat,
@@ -81,6 +83,14 @@ export default function App() {
   const [extractResult, setExtractResult] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  // edit state (ZIP only)
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [armedDelete, setArmedDelete] = useState(false);
+  const armTimer = useRef<number>(0);
+
   // create state
   const [sources, setSources] = useState<string[]>([]);
   const [format, setFormat] = useState<CreateFormat>('zip');
@@ -126,6 +136,9 @@ export default function App() {
           setLastOutput(null);
           setExtractResult(null);
           setSelected(new Set());
+          setRenaming(null);
+          setNewFolderOpen(false);
+          setArmedDelete(false);
           setView({ kind: 'listing', path, listing });
         })
         .catch((err) => toast(`${t.openError}: ${String(err)}`, true))
@@ -207,7 +220,38 @@ export default function App() {
     setCreateResult(null);
   }, [sources, format, level]);
 
-  // Drag & Drop: Archive öffnen bzw. Dateien zur Packliste hinzufügen
+  // Eine Bearbeitungs-Runde (nur ZIP): Archiv wird sicher neu geschrieben,
+  // danach ersetzt das frische Listing die Ansicht.
+  const applyEdit = async (
+    ops: EditOps,
+    done: (entriesBefore: number, entriesAfter: number) => string
+  ) => {
+    if (viewRef.current.kind !== 'listing' || busy) return;
+    const v = viewRef.current;
+    if (v.listing.encrypted && !password) {
+      toast(t.editNeedsPassword, true);
+      return;
+    }
+    setBusy(true);
+    try {
+      const listing = await api.editArchive(v.path, { ...ops, password: password || undefined });
+      setSelected(new Set());
+      setRenaming(null);
+      setNewFolderOpen(false);
+      setNewFolderName('');
+      setArmedDelete(false);
+      setView({ kind: 'listing', path: v.path, listing });
+      toast(done(v.listing.entries.length, listing.entries.length));
+    } catch (err) {
+      toast(`${t.editError}: ${String(err)}`, true);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const applyEditRef = useRef(applyEdit);
+  applyEditRef.current = applyEdit;
+
+  // Drag & Drop: Archive öffnen, Dateien in offene ZIPs oder zur Packliste
   useEffect(() => {
     const un = getCurrentWebview().onDragDropEvent((event) => {
       if (event.payload.type !== 'drop') return;
@@ -218,6 +262,15 @@ export default function App() {
         return;
       }
       const archive = paths.find(looksLikeArchive);
+      if (
+        viewRef.current.kind === 'listing' &&
+        viewRef.current.listing.format === 'ZIP' &&
+        !archive
+      ) {
+        // Nicht-Archive in ein offenes ZIP ziehen = hinzufügen
+        applyEditRef.current({ addPaths: paths }, (b, a) => t.editedAdded(Math.max(0, a - b)));
+        return;
+      }
       if (archive) {
         openArchive(archive);
       } else {
@@ -306,6 +359,60 @@ export default function App() {
       setProgress(null);
     }
   };
+
+  // --- ZIP-Bearbeitung: hinzufügen, neuer Ordner, umbenennen, löschen ---
+  const canEdit = view.kind === 'listing' && view.listing.format === 'ZIP';
+
+  const addToArchive = async (directory: boolean) => {
+    const picked = await open({ multiple: true, directory });
+    if (!picked) return;
+    const paths = Array.isArray(picked) ? picked : [picked];
+    if (paths.length === 0) return;
+    applyEdit({ addPaths: paths }, (b, a) => t.editedAdded(Math.max(0, a - b)));
+  };
+
+  const createFolder = () => {
+    const name = newFolderName.trim().replace(/^\/+|\/+$/g, '');
+    if (!name) return;
+    applyEdit({ addDirs: [name] }, () => t.editedFolder(name));
+  };
+
+  const startRename = (name: string) => {
+    setRenameValue(name.endsWith('/') ? name.slice(0, -1) : name);
+    setRenaming(name);
+  };
+
+  const commitRename = (entry: ArchiveEntry) => {
+    const to = renameValue.trim().replace(/^\/+|\/+$/g, '');
+    const from = entry.isDir && !entry.name.endsWith('/') ? `${entry.name}/` : entry.name;
+    const toFull = entry.isDir ? `${to}/` : to;
+    if (!to || toFull === from) {
+      setRenaming(null);
+      return;
+    }
+    applyEdit({ renames: [{ from, to: toFull }] }, () => t.editedRenamed(to));
+  };
+
+  const deleteSelected = () => {
+    if (view.kind !== 'listing') return;
+    if (!armedDelete) {
+      // Löschen ist endgültig: erst der zweite Klick führt aus
+      setArmedDelete(true);
+      window.clearTimeout(armTimer.current);
+      armTimer.current = window.setTimeout(() => setArmedDelete(false), 4000);
+      return;
+    }
+    window.clearTimeout(armTimer.current);
+    const names = view.listing.entries
+      .filter((e) => selected.has(e.name))
+      .map((e) => (e.isDir && !e.name.endsWith('/') ? `${e.name}/` : e.name));
+    applyEdit({ deletes: names }, (b, a) => t.editedDeleted(Math.max(0, b - a)));
+  };
+
+  // eine geänderte Auswahl entschärft einen angefangenen Löschvorgang
+  useEffect(() => {
+    setArmedDelete(false);
+  }, [selected]);
 
   const addFiles = async (directory: boolean) => {
     const picked = await open({ multiple: true, directory });
@@ -456,6 +563,46 @@ export default function App() {
               {fmtBytes(view.listing.totalSize)} · {t.archiveLabel}{' '}
               {fmtBytes(view.listing.archiveSize)}
             </span>
+            {canEdit && (
+              <>
+                <span className="spacer" />
+                {newFolderOpen ? (
+                  <input
+                    type="text"
+                    className="newfolder"
+                    autoFocus
+                    placeholder={t.newFolderPlaceholder}
+                    value={newFolderName}
+                    onChange={(e) => setNewFolderName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') createFolder();
+                      if (e.key === 'Escape') {
+                        setNewFolderOpen(false);
+                        setNewFolderName('');
+                      }
+                    }}
+                    onBlur={() => {
+                      setNewFolderOpen(false);
+                      setNewFolderName('');
+                    }}
+                  />
+                ) : (
+                  <button
+                    className="small"
+                    onClick={() => setNewFolderOpen(true)}
+                    disabled={busy}
+                  >
+                    {t.newFolder}
+                  </button>
+                )}
+                <button className="small" onClick={() => addToArchive(false)} disabled={busy}>
+                  {t.addFiles}
+                </button>
+                <button className="small" onClick={() => addToArchive(true)} disabled={busy}>
+                  {t.addFolder}
+                </button>
+              </>
+            )}
           </div>
           <div className="entry-table">
             <div className="entry-row head">
@@ -486,18 +633,49 @@ export default function App() {
                   }}
                 >
                   <span className="c-check">{selected.has(e.name) ? '☑' : '☐'}</span>
-                  <span className="c-name" title={e.name}>
-                    {e.isDir ? '📁 ' : ''}
-                    {e.name}
-                    {e.encrypted ? ' 🔒' : ''}
-                  </span>
+                  {renaming === e.name ? (
+                    <input
+                      type="text"
+                      className="rename-input"
+                      autoFocus
+                      value={renameValue}
+                      onChange={(ev) => setRenameValue(ev.target.value)}
+                      onClick={(ev) => ev.stopPropagation()}
+                      onDoubleClick={(ev) => ev.stopPropagation()}
+                      onBlur={() => setRenaming(null)}
+                      onKeyDown={(ev) => {
+                        if (ev.key === 'Enter') commitRename(e);
+                        if (ev.key === 'Escape') setRenaming(null);
+                      }}
+                    />
+                  ) : (
+                    <span className="c-name" title={e.name}>
+                      {e.isDir ? '📁 ' : ''}
+                      {e.name}
+                      {e.encrypted ? ' 🔒' : ''}
+                    </span>
+                  )}
+                  {canEdit && renaming !== e.name && (
+                    <button
+                      className="ghost small rowbtn"
+                      title={t.renameEntry}
+                      disabled={busy}
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        startRename(e.name);
+                      }}
+                      onDoubleClick={(ev) => ev.stopPropagation()}
+                    >
+                      ✎
+                    </button>
+                  )}
                   <span className="c-size">{e.isDir ? t.dirLabel : fmtBytes(e.size)}</span>
                   <span className="c-size">{e.isDir ? '' : fmtBytes(e.compressedSize)}</span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="hint-faint">{t.selectHint}</div>
+          <div className="hint-faint">{canEdit ? t.selectHintEdit : t.selectHint}</div>
           <div className="workbottom">
             {busy && progress?.phase === 'extract' ? (
               <div className="progresswrap">
@@ -537,15 +715,28 @@ export default function App() {
                 {lastOutput && (
                   <button onClick={() => api.revealPath(lastOutput)}>{t.revealBtn}</button>
                 )}
-                {selectedFileCount > 0 ? (
+                {selected.size > 0 ? (
                   <>
                     <button className="subtle" onClick={() => setSelected(new Set())}>
                       {t.clearSelection}
                     </button>
+                    {canEdit && (
+                      <button
+                        className={armedDelete ? 'danger' : ''}
+                        onClick={deleteSelected}
+                        disabled={busy}
+                      >
+                        {armedDelete ? t.reallyDelete : t.deleteSelected(selected.size)}
+                      </button>
+                    )}
                     <button onClick={extractAll} disabled={busy}>
                       {t.extractAll}
                     </button>
-                    <button className="primary" onClick={extractSelected} disabled={busy}>
+                    <button
+                      className="primary"
+                      onClick={extractSelected}
+                      disabled={busy || selectedFileCount === 0}
+                    >
                       {t.extractSelected(selectedFileCount)}
                     </button>
                   </>

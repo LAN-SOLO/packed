@@ -10,6 +10,7 @@
 
 pub mod compress;
 pub mod create;
+pub mod edit;
 pub mod error;
 pub mod extract;
 pub mod format;
