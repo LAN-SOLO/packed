@@ -86,6 +86,9 @@ export default function App() {
   // edit state (ZIP only)
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  // Escape muss den Blur-Commit unterdrücken: das Entfernen des fokussierten
+  // Inputs feuert in WebKit noch ein focusout hinterher.
+  const renameCancelRef = useRef(false);
   const [newFolderOpen, setNewFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
   const [armedDelete, setArmedDelete] = useState(false);
@@ -378,19 +381,26 @@ export default function App() {
   };
 
   const startRename = (name: string) => {
+    renameCancelRef.current = false;
     setRenameValue(name.endsWith('/') ? name.slice(0, -1) : name);
     setRenaming(name);
   };
 
+  // Idempotent: Enter committet und unmountet das Input — der dabei noch
+  // feuernde Blur darf nicht ein zweites Mal committen.
   const commitRename = (entry: ArchiveEntry) => {
+    if (renaming !== entry.name) return;
     const to = renameValue.trim().replace(/^\/+|\/+$/g, '');
     const from = entry.isDir && !entry.name.endsWith('/') ? `${entry.name}/` : entry.name;
     const toFull = entry.isDir ? `${to}/` : to;
-    if (!to || toFull === from) {
-      setRenaming(null);
-      return;
-    }
+    setRenaming(null);
+    if (!to || toFull === from) return;
     applyEdit({ renames: [{ from, to: toFull }] }, () => t.editedRenamed(to));
+  };
+
+  const cancelRename = () => {
+    renameCancelRef.current = true;
+    setRenaming(null);
   };
 
   const deleteSelected = () => {
@@ -642,10 +652,23 @@ export default function App() {
                       onChange={(ev) => setRenameValue(ev.target.value)}
                       onClick={(ev) => ev.stopPropagation()}
                       onDoubleClick={(ev) => ev.stopPropagation()}
-                      onBlur={() => setRenaming(null)}
+                      onBlur={() => {
+                        // Klick außerhalb übernimmt die Änderung — Abbruch nur per Escape
+                        if (renameCancelRef.current) {
+                          renameCancelRef.current = false;
+                          return;
+                        }
+                        commitRename(e);
+                      }}
                       onKeyDown={(ev) => {
-                        if (ev.key === 'Enter') commitRename(e);
-                        if (ev.key === 'Escape') setRenaming(null);
+                        if (ev.key === 'Enter') {
+                          ev.preventDefault();
+                          commitRename(e);
+                        }
+                        if (ev.key === 'Escape') {
+                          ev.preventDefault();
+                          cancelRename();
+                        }
                       }}
                     />
                   ) : (
