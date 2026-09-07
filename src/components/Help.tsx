@@ -87,6 +87,7 @@ const de: Content = {
       body: [
         'Die Oberfläche passt sich der Fenstergröße an — die UI skaliert mit, damit nie ein Scrollbalken über die ganze Seite läuft.',
         'Der Vollbild-Knopf oben rechts wechselt zwischen Fenster- und Vollbild-Modus (alternativ der grüne macOS-Knopf).',
+        'Der Sonne-/Mond-Knopf daneben schaltet zwischen Dunkel- und Hell-Modus um — die Wahl bleibt gespeichert.',
       ],
     },
     {
@@ -192,6 +193,7 @@ const de: Content = {
         'packed kennt zwei Modi: Fenster und Vollbild — umschalten über den Knopf oben rechts oder den grünen macOS-Knopf.',
         'Die Oberfläche skaliert automatisch mit der Fenstergröße (Zoomstufen von 70 % bis 135 %), sodass alles immer hineinpasst — ohne Seiten-Scrollbalken.',
         'Nur lange Datei-Listen scrollen intern, mit dezentem schmalem Balken.',
+        'Darstellung: Der Sonne-/Mond-Knopf in der Kopfleiste wechselt zwischen Dunkel-Modus (Standard) und Hell-Modus. Die Einstellung wird lokal gespeichert und beim nächsten Start wiederhergestellt.',
       ],
     },
     {
@@ -282,6 +284,7 @@ const en: Content = {
       body: [
         'The interface adapts to the window size — the UI scales along, so no page-wide scrollbar ever appears.',
         'The fullscreen button in the top right switches between windowed and fullscreen mode (or use the green macOS button).',
+        'The sun/moon button next to it toggles between dark and light mode — your choice is remembered.',
       ],
     },
     {
@@ -387,6 +390,7 @@ const en: Content = {
         'packed has two modes: windowed and fullscreen — toggle via the button in the top right or the green macOS button.',
         'The interface scales automatically with the window size (zoom levels from 70% to 135%), so everything always fits — without a page scrollbar.',
         'Only long file lists scroll internally, with a subtle slim bar.',
+        'Appearance: the sun/moon button in the header switches between dark mode (default) and light mode. The setting is stored locally and restored on the next launch.',
       ],
     },
     {

@@ -17,6 +17,7 @@ import {
   UpdateInfo,
 } from './api';
 import { t } from './i18n';
+import { applyTheme, readStoredTheme, Theme } from './theme';
 import UpdateModal from './components/UpdateModal';
 import Help from './components/Help';
 
@@ -75,6 +76,7 @@ export default function App() {
   const [toastMsg, setToastMsg] = useState<{ msg: string; err: boolean } | null>(null);
   const toastTimer = useRef<number>(0);
   const [isFs, setIsFs] = useState(false);
+  const [theme, setTheme] = useState<Theme>(readStoredTheme);
 
   // listing state
   const [password, setPassword] = useState('');
@@ -499,6 +501,12 @@ export default function App() {
 
   const singleStreamBlocked = SINGLE_STREAM.includes(format) && sources.length !== 1;
 
+  const toggleTheme = () => {
+    const next: Theme = theme === 'dark' ? 'light' : 'dark';
+    applyTheme(next);
+    setTheme(next);
+  };
+
   return (
     <div className="app">
       <header className="topbar">
@@ -519,6 +527,25 @@ export default function App() {
         )}
         <button className="small" title="F1" onClick={openContextHelp}>
           {t.helpBtn}
+        </button>
+        <button
+          className="small icon"
+          title={theme === 'dark' ? t.themeToLight : t.themeToDark}
+          aria-label={theme === 'dark' ? t.themeToLight : t.themeToDark}
+          onClick={toggleTheme}
+        >
+          {theme === 'dark' ? (
+            /* Sonne */
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+            </svg>
+          ) : (
+            /* Mond */
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+            </svg>
+          )}
         </button>
         <button className="small" onClick={toggleFullscreen}>
           {isFs ? t.fullscreenExit : t.fullscreenEnter}

@@ -80,6 +80,8 @@ const de = {
   folderBadge: 'Ordner',
   // header
   helpBtn: '? Hilfe',
+  themeToLight: 'In den Hell-Modus wechseln',
+  themeToDark: 'In den Dunkel-Modus wechseln',
   fullscreenEnter: 'Vollbild',
   fullscreenExit: 'Vollbild verlassen',
   // updates
@@ -172,6 +174,8 @@ const en: typeof de = {
   archiveLabel: 'archive',
   folderBadge: 'folder',
   helpBtn: '? Help',
+  themeToLight: 'Switch to light mode',
+  themeToDark: 'Switch to dark mode',
   fullscreenEnter: 'Fullscreen',
   fullscreenExit: 'Exit fullscreen',
   checkForUpdates: 'Check for updates',
